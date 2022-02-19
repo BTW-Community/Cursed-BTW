@@ -1,0 +1,19 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directories
+**/build/
+!src/**/build/
+
+# Ignore local Minecraft folder
+.minecraft
+
+# IntelliJ
+*.iml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/jarRepositories.xml

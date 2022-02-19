@@ -1,0 +1,30 @@
+pluginManagement {
+    repositories {
+        maven {
+            url 'https://BTW-Community.github.io/BTW-gradle'
+        }
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        gradlePluginPortal()
+        maven {
+            name = 'Jitpack'
+            url = 'https://jitpack.io'
+        }
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "fabric-loom" && requested.version?.endsWith("-SNAPSHOT") != true) {
+                useModule("com.github.Chocohead.Fabric-Loom:fabric-loom:${requested.version}")
+            }
+        }
+    }
+}
+rootProject.name = name
+
+gradle.rootProject {
+    group = group
+    version = version
+    description = description
+}

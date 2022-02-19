@@ -1,0 +1,136 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import net.fabricmc.loom.task.RemapJarTask
+
+plugins {
+    id 'maven-publish'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+    id 'fabric-loom' version "0.7-SNAPSHOT"
+}
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+archivesBaseName = project.archives_base_name
+version = project.mod_version
+group = project.maven_group
+
+repositories {
+    maven {
+        name = 'legacy-fabric'
+        url = 'https://maven.legacyfabric.net'
+    }
+    maven {
+        url 'https://jitpack.io'
+    }
+    maven {
+        name 'HalfOf2'
+        url 'https://storage.googleapis.com/devan-maven/'
+    }
+}
+
+sourceSets {
+    btw {
+        java {
+            srcDirs = ['src/btw/java']
+        }
+        resources {
+            srcDirs = ['src/btw/resources']
+        }
+    }
+}
+
+def lwjglVersion = System.getProperty("os.name").toLowerCase().contains("mac") ? "2.9.1" : "2.9.0"
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation 'org.apache.logging.log4j:log4j-core:2.17.0'
+    implementation 'org.apache.logging.log4j:log4j-api:2.17.0'
+
+    implementation "org.lwjgl.lwjgl:lwjgl_util:${lwjglVersion}"
+    implementation "org.lwjgl.lwjgl:lwjgl:${lwjglVersion}"
+    implementation "org.lwjgl.lwjgl:lwjgl-platform:${lwjglVersion}"
+
+    implementation fileTree(dir: "libs", include: "**.zip")
+    compileOnly fileTree(dir: "BTW_dev", include: "**.jar")
+    runtimeClasspath fileTree(dir: "BTW_dev", include: "**.jar")
+
+    mappings fileTree(dir: "custom_mappings", include: "**.zip")
+    modImplementation("io.github.minecraft-cursed-legacy:cursed-fabric-loader:${loader_version}") {
+        transitive false
+    }
+}
+
+configurations {
+    btwCompileClasspath.extendsFrom mainCompileClasspath, implementation
+}
+
+configurations.all {
+    resolutionStrategy {
+        dependencySubstitution {
+            substitute module('org.lwjgl.lwjgl:lwjgl_util:2.9.1-nightly-20130708-debug3') with module("org.lwjgl.lwjgl:lwjgl_util:${lwjglVersion}")
+            substitute module('org.lwjgl.lwjgl:lwjgl:2.9.1-nightly-20130708-debug3') with module("org.lwjgl.lwjgl:lwjgl:${lwjglVersion}")
+        }
+        force "org.lwjgl.lwjgl:lwjgl-platform:${lwjglVersion}"
+    }
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = "UTF-8"
+    if (JavaVersion.current().isJava9Compatible()) it.options.release = 8
+}
+
+java {
+    withSourcesJar()
+}
+
+shadowJar {
+    from jar.outputs.files
+}
+
+jar {
+    from sourceSets.main.output.resourcesDir
+    from sourceSets.main.output.classesDirs
+    from("LICENSE") {
+        rename { "${it}_${project.archivesBaseName}"}
+    }
+}
+
+task btwJar(type:Jar) {
+    from sourceSets.btw.output.resourcesDir
+    from sourceSets.btw.output.classesDirs
+    destinationDirectory = file("$rootDir/BTW_dev")
+    archiveFileName = "BTW_dev.jar"
+}
+
+task shadowBtwJar(type:ShadowJar) {
+    from btwJar.outputs.files
+}
+
+task remapBtwJar(type:RemapJarTask) {
+    addNestedDependencies = false
+    dependsOn(btwJar)
+    input.set btwJar.archiveFile.get()
+    destinationDirectory = file("$rootDir/BTW_release")
+    archiveFileName = "BTW.jar"
+}
+
+task remapBtwJarShadow(type:RemapJarTask) {
+    addNestedDependencies = true
+    dependsOn(shadowBtwJar)
+    input.set shadowBtwJar.archiveFile.get()
+    destinationDirectory = file("$rootDir/BTW_release")
+    archiveFileName = "BTW_shadow.jar"
+}
+
+remapJar {
+    dependsOn(jar)
+    input.set jar.archiveFile.get()
+    destinationDirectory = file("$rootDir/release")
+}
