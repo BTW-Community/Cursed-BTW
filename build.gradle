@@ -1,6 +1,12 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import net.fabricmc.loom.task.RemapJarTask
 
+buildscript {
+    dependencies {
+        classpath fileTree(dir: "libs", include: "fabric-loom-0.7.local.jar")
+    }
+}
+
 plugins {
     id 'maven-publish'
     id 'com.github.johnrengelman.shadow' version '7.1.2'
@@ -13,6 +19,10 @@ targetCompatibility = JavaVersion.VERSION_1_8
 archivesBaseName = project.archives_base_name
 version = project.mod_version
 group = project.maven_group
+
+loom {
+    refmapName = 'mixins.modid.refmap.json'
+}
 
 repositories {
     maven {
