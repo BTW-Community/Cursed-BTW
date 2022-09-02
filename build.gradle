@@ -84,10 +84,6 @@ configurations.all {
     }
 }
 
-loom {
-    refmapName = 'mixins.modid.refmap.json'
-}
-
 processResources {
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
