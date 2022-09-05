@@ -4,6 +4,7 @@
 # Ignore Gradle build output directories
 **/build/
 !src/**/build/
+src/btw/**
 
 # Ignore local Minecraft folder
 .minecraft

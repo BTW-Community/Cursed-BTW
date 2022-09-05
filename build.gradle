@@ -1,5 +1,8 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import net.fabricmc.loom.configuration.ide.RunConfig
 import net.fabricmc.loom.task.RemapJarTask
+import net.fabricmc.loom.task.ReobfuscateJarTask
+import net.fabricmc.loom.task.RunClientTask
+import net.fabricmc.loom.task.RunServerTask
 
 buildscript {
     dependencies {
@@ -9,7 +12,6 @@ buildscript {
 
 plugins {
     id 'maven-publish'
-    id 'com.github.johnrengelman.shadow' version '7.1.2'
     id 'fabric-loom' version "0.7-SNAPSHOT"
 }
 
@@ -19,10 +21,6 @@ targetCompatibility = JavaVersion.VERSION_1_8
 archivesBaseName = project.archives_base_name
 version = project.mod_version
 group = project.maven_group
-
-loom {
-    refmapName = 'mixins.modid.refmap.json'
-}
 
 repositories {
     maven {
@@ -62,7 +60,7 @@ dependencies {
 
     implementation fileTree(dir: "libs", include: "**.zip")
     compileOnly fileTree(dir: "BTW_dev", include: "**.jar")
-    runtimeClasspath fileTree(dir: "BTW_dev", include: "**.jar")
+    runtimeClasspath fileTree(dir: "dev_run", include: "dev.jar")
 
     mappings fileTree(dir: "custom_mappings", include: "**.zip")
     modImplementation("io.github.minecraft-cursed-legacy:cursed-fabric-loader:${loader_version}") {
@@ -71,7 +69,7 @@ dependencies {
 }
 
 configurations {
-    btwCompileClasspath.extendsFrom mainCompileClasspath, implementation
+    btwCompileClasspath.extendsFrom implementation, modImplementation
 }
 
 configurations.all {
@@ -100,8 +98,27 @@ java {
     withSourcesJar()
 }
 
-shadowJar {
-    from jar.outputs.files
+compileJava {
+    dependsOn('btwJar')
+}
+
+task devPackMod(type:Copy) {
+    dependsOn('jar')
+    from sourceSets.main.output.classesDirs
+    into file("$rootDir/build/classes/java/btw")
+}
+
+task devPackBTW(type:Copy) {
+    dependsOn('devPackMod')
+    dependsOn('btwJar')
+}
+
+task devPackRun(type:Jar) {
+    dependsOn('devPackBTW')
+    from fileTree("$rootDir/build/classes/java/btw")
+    from sourceSets.btw.output.resourcesDir
+    destinationDirectory = file("$rootDir/dev_run")
+    archiveFileName = "dev.jar"
 }
 
 jar {
@@ -119,10 +136,6 @@ task btwJar(type:Jar) {
     archiveFileName = "BTW_dev.jar"
 }
 
-task shadowBtwJar(type:ShadowJar) {
-    from btwJar.outputs.files
-}
-
 task remapBtwJar(type:RemapJarTask) {
     addNestedDependencies = false
     dependsOn(btwJar)
@@ -131,16 +144,47 @@ task remapBtwJar(type:RemapJarTask) {
     archiveFileName = "BTW.jar"
 }
 
-task remapBtwJarShadow(type:RemapJarTask) {
-    addNestedDependencies = true
-    dependsOn(shadowBtwJar)
-    input.set shadowBtwJar.archiveFile.get()
-    destinationDirectory = file("$rootDir/BTW_release")
-    archiveFileName = "BTW_shadow.jar"
-}
-
 remapJar {
     dependsOn(jar)
     input.set jar.archiveFile.get()
     destinationDirectory = file("$rootDir/release")
+}
+
+reobfuscateJar {
+    dependsOn(jar)
+    input.set jar.archiveFile.get()
+    destinationDirectory = file("$rootDir/reobfuscated")
+}
+
+task reobfuscateBTW(type:ReobfuscateJarTask) {
+    dependsOn('btwJar')
+    addNestedDependencies = true
+    input.set btwJar.archiveFile.get()
+    destinationDirectory = file("$rootDir/BTW_reobfuscated")
+    archiveFileName = "BTW_reobf.jar"
+}
+
+task safeRunClient(type:RunClientTask) {
+    mustRunAfter('clean')
+    dependsOn('clean')
+    dependsOn('devPackRun')
+}
+
+task safeRunServer(type:RunServerTask) {
+    mustRunAfter('clean')
+    dependsOn('clean')
+    dependsOn('devPackRun')
+}
+
+runClient {
+    dependsOn('devPackRun')
+}
+
+runServer {
+    dependsOn('devPackRun')
+}
+
+clean.doFirst {
+    delete "$rootDir/dev_run"
+    delete "$rootDir/BTW_dev"
 }
