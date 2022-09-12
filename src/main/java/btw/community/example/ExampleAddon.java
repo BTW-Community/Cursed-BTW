@@ -1,6 +1,9 @@
-package net.minecraft.src;
+package btw.community.example;
 
-public class ExampleAddon extends FCAddOn {
+import btw.AddonHandler;
+import btw.BTWAddon;
+
+public class ExampleAddon extends BTWAddon {
     private static ExampleAddon instance;
 
     private ExampleAddon() {
@@ -9,7 +12,7 @@ public class ExampleAddon extends FCAddOn {
 
     @Override
     public void Initialize() {
-        FCAddOnHandler.LogMessage(this.getName() + " Version " + this.getVersionString() + " Initializing...");
+        AddonHandler.LogMessage(this.getName() + " Version " + this.getVersionString() + " Initializing...");
     }
 
     public static ExampleAddon getInstance() {

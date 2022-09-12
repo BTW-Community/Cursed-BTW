@@ -1,7 +1,7 @@
 package net.fabricmc.example;
 
+import btw.AddonHandler;
 import net.fabricmc.api.ModInitializer;
-import net.minecraft.src.FCAddOnHandler;
 
 import java.util.logging.Logger;
 
@@ -16,7 +16,7 @@ public class ExampleMod implements ModInitializer {
 		// This code runs as soon as Minecraft is in a mod-load-ready state.
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
-		FCAddOnHandler.LogMessage("Hello Fabric world!");
+		AddonHandler.LogMessage("Hello Fabric world!");
 	}
 
 }
