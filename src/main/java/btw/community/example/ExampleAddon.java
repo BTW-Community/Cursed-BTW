@@ -11,8 +11,8 @@ public class ExampleAddon extends BTWAddon {
     }
 
     @Override
-    public void Initialize() {
-        AddonHandler.LogMessage(this.getName() + " Version " + this.getVersionString() + " Initializing...");
+    public void initialize() {
+        AddonHandler.logMessage(this.getName() + " Version " + this.getVersionString() + " Initializing...");
     }
 
     public static ExampleAddon getInstance() {
