@@ -1,7 +1,7 @@
 package net.fabricmc.example;
 
 import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint;
-import net.minecraft.src.ExampleAddon;
+import btw.community.example.ExampleAddon;
 
 public class ExamplePreLaunchInitializer implements PreLaunchEntrypoint {
     /**

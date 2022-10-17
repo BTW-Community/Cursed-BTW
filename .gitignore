@@ -4,7 +4,9 @@
 # Ignore Gradle build output directories
 **/build/
 !src/**/build/
-src/btw/**
+
+# Screws up the MC dev plugin for IntelliJ..
+# src/btw/**
 
 # Ignore local Minecraft folder
 .minecraft

@@ -1,6 +1,3 @@
-import net.fabricmc.loom.configuration.ide.RunConfig
-import net.fabricmc.loom.task.RemapJarTask
-import net.fabricmc.loom.task.ReobfuscateJarTask
 import net.fabricmc.loom.task.RunClientTask
 import net.fabricmc.loom.task.RunServerTask
 
@@ -59,8 +56,8 @@ dependencies {
     implementation "org.lwjgl.lwjgl:lwjgl-platform:${lwjglVersion}"
 
     implementation fileTree(dir: "libs", include: "**.zip")
-    compileOnly fileTree(dir: "BTW_dev", include: "**.jar")
-    runtimeClasspath fileTree(dir: "dev_run", include: "dev.jar")
+    compileOnly fileTree(dir: "$buildDir/BTW_dev", include: "**.jar")
+    runtimeClasspath fileTree(dir: "$buildDir/dev_run", include: "dev.jar")
 
     mappings fileTree(dir: "custom_mappings", include: "**.zip")
     modImplementation("io.github.minecraft-cursed-legacy:cursed-fabric-loader:${loader_version}") {
@@ -105,7 +102,7 @@ compileJava {
 task devPackMod(type:Copy) {
     dependsOn('jar')
     from sourceSets.main.output.classesDirs
-    into file("$rootDir/build/classes/java/btw")
+    into file("$buildDir/classes/java/btw")
 }
 
 task devPackBTW(type:Copy) {
@@ -115,9 +112,9 @@ task devPackBTW(type:Copy) {
 
 task devPackRun(type:Jar) {
     dependsOn('devPackBTW')
-    from fileTree("$rootDir/build/classes/java/btw")
+    from fileTree("$buildDir/classes/java/btw")
     from sourceSets.btw.output.resourcesDir
-    destinationDirectory = file("$rootDir/dev_run")
+    destinationDirectory = file("$buildDir/dev_run")
     archiveFileName = "dev.jar"
 }
 
@@ -132,16 +129,8 @@ jar {
 task btwJar(type:Jar) {
     from sourceSets.btw.output.resourcesDir
     from sourceSets.btw.output.classesDirs
-    destinationDirectory = file("$rootDir/BTW_dev")
+    destinationDirectory = file("$buildDir/BTW_dev")
     archiveFileName = "BTW_dev.jar"
-}
-
-task remapBtwJar(type:RemapJarTask) {
-    addNestedDependencies = false
-    dependsOn(btwJar)
-    input.set btwJar.archiveFile.get()
-    destinationDirectory = file("$rootDir/BTW_release")
-    archiveFileName = "BTW.jar"
 }
 
 remapJar {
@@ -154,14 +143,6 @@ reobfuscateJar {
     dependsOn(jar)
     input.set jar.archiveFile.get()
     destinationDirectory = file("$rootDir/reobfuscated")
-}
-
-task reobfuscateBTW(type:ReobfuscateJarTask) {
-    dependsOn('btwJar')
-    addNestedDependencies = true
-    input.set btwJar.archiveFile.get()
-    destinationDirectory = file("$rootDir/BTW_reobfuscated")
-    archiveFileName = "BTW_reobf.jar"
 }
 
 task safeRunClient(type:RunClientTask) {
@@ -185,6 +166,6 @@ runServer {
 }
 
 clean.doFirst {
-    delete "$rootDir/dev_run"
-    delete "$rootDir/BTW_dev"
+    delete "$buildDir/dev_run"
+    delete "$buildDir/BTW_dev"
 }
