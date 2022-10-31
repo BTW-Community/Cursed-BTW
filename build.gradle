@@ -56,7 +56,8 @@ dependencies {
     implementation "org.lwjgl.lwjgl:lwjgl-platform:${lwjglVersion}"
 
     implementation fileTree(dir: "libs", include: "**.zip")
-    compileOnly fileTree(dir: "$buildDir/BTW_dev", include: "**.jar")
+    compileOnly fileTree(dir: "$projectDir/BTW_dev", include: "*.zip")
+
     runtimeClasspath fileTree(dir: "$buildDir/dev_run", include: "dev.jar")
 
     mappings fileTree(dir: "custom_mappings", include: "**.zip")
@@ -113,6 +114,7 @@ task devPackBTW(type:Copy) {
 task devPackRun(type:Jar) {
     dependsOn('devPackBTW')
     from fileTree("$buildDir/classes/java/btw")
+    from fileTree("$projectDir/BTW_dev/")
     from sourceSets.btw.output.resourcesDir
     destinationDirectory = file("$buildDir/dev_run")
     archiveFileName = "dev.jar"
@@ -127,6 +129,7 @@ jar {
 }
 
 task btwJar(type:Jar) {
+    from fileTree("$projectDir/BTW_dev/")
     from sourceSets.btw.output.resourcesDir
     from sourceSets.btw.output.classesDirs
     destinationDirectory = file("$buildDir/BTW_dev")

@@ -63,3 +63,7 @@ More troubleshooting is still todo. Feel free to message me on Discord.
 Java reflection might not work if they reference obfuscated names via Strings (as mentioned above). 
 Porting those addons is a simple process though, as only the new intermediary names have to be adopted.
 
+## License
+This project incorporates:
+* A modified version of [Fabric Loom](https://github.com/FabricMC/fabric-loom) (MIT)
+* A precompiled version of [Tiny Remapper](https://github.com/FabricMC/tiny-remapper) (LGPL-3.0)
