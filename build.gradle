@@ -57,6 +57,7 @@ dependencies {
 
     implementation fileTree(dir: "libs", include: "**.zip")
     compileOnly fileTree(dir: "$projectDir/BTW_dev", include: "*.zip")
+    compileOnly fileTree(dir: "$buildDir/BTW_dev", include: "**.jar")
 
     runtimeClasspath fileTree(dir: "$buildDir/dev_run", include: "dev.jar")
 
