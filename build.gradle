@@ -74,7 +74,6 @@ dependencies {
     compileOnly fileTree(dir: "$buildDir/BTW_dev", include: "**.jar")
 
     runtimeClasspath fileTree(dir: "$buildDir/dev_run", include: "dev.jar")
-    //runtimeClasspath fileTree(dir: "$projectDir", include: "btw_ce-2.0.4-dev.zip")
 
     mappings fileTree(dir: "custom_mappings", include: "**.zip")
     modImplementation("io.github.minecraft-cursed-legacy:cursed-fabric-loader:${loader_version}") {
@@ -111,11 +110,6 @@ tasks.withType(JavaCompile).configureEach {
 
 java {
     withSourcesJar()
-}
-
-loom {
-    refmapName = "foodspoilmod.refmap2.json"
-
 }
 
 compileJava {
