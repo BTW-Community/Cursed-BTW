@@ -83,10 +83,9 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
                                     list.add(new LdcInsnNode("Hello BTW World!"));
                                     list.add(new MethodInsnNode(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false));
 
-                                    // call BTWFabricMod.doIt, use the supplied applet
+                                    // call BTWFabricMod.initArgs, use the supplied applet
                                     list.add(new VarInsnNode(ALOAD, 1));
                                     list.add(new MethodInsnNode(INVOKESTATIC, "btw/community/fabric/BTWFabricMod", "initArgs", "(Lnet/minecraft/client/MinecraftApplet;)V", false));
-
 
                                     // get BTWFabricMod.args, call static main string args
                                     list.add(new FieldInsnNode(GETSTATIC, "btw/community/fabric/BTWFabricMod", "args", "[Ljava/lang/String;"));
