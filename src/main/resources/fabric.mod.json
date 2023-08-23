@@ -3,26 +3,26 @@
   "id": "modid",
   "version": "${version}",
 
-  "name": "Example Mod",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "name": "BTW Fabric Mod",
+  "description": "This is the BTW Fabric port!",
   "authors": [
-    "Me!"
+    "BTW Community"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://www.sargunster.com/btwforum/",
+    "sources": "https://https://github.com/BTW-Community/Cursed-BTW"
   },
 
-  "license": "CC0-1.0",
+  "license": "CC-BY-4.0",
   "icon": "assets/modid/icon.png",
 
   "environment": "*",
   "entrypoints": {
     "init": [
-      "net.fabricmc.example.ExampleMod"
+      "btw.community.fabric.BTWFabricMod"
     ],
-    "preLaunch": [
-      "net.fabricmc.example.ExamplePreLaunchInitializer"
+    "gfh:prePreLaunch": [
+      "btw.community.fabric.BTWFabricMod"
     ]
   },
   "mixins": [

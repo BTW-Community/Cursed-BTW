@@ -31,6 +31,10 @@ repositories {
         name 'HalfOf2'
         url 'https://storage.googleapis.com/devan-maven/'
     }
+    maven {
+        url = 'https://raw.githubusercontent.com/Devan-Kerman/Devan-Repo/master/'
+    }
+
 }
 
 sourceSets {
@@ -50,16 +54,27 @@ dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation 'org.apache.logging.log4j:log4j-core:2.17.0'
     implementation 'org.apache.logging.log4j:log4j-api:2.17.0'
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
 
     implementation "org.lwjgl.lwjgl:lwjgl_util:${lwjglVersion}"
     implementation "org.lwjgl.lwjgl:lwjgl:${lwjglVersion}"
     implementation "org.lwjgl.lwjgl:lwjgl-platform:${lwjglVersion}"
+
+
+    implementation 'it.unimi.dsi:fastutil:8.5.12'
+    modImplementation(group: 'net.devtech', name: 'grossfabrichacks', version: '4.5') {
+        exclude group: 'net.fabricmc'
+    }
+
+    include 'it.unimi.dsi:fastutil:8.5.12'
+    include 'net.devtech:grossfabrichacks:4.5'
 
     implementation fileTree(dir: "libs", include: "**.zip")
     compileOnly fileTree(dir: "$projectDir/BTW_dev", include: "*.zip")
     compileOnly fileTree(dir: "$buildDir/BTW_dev", include: "**.jar")
 
     runtimeClasspath fileTree(dir: "$buildDir/dev_run", include: "dev.jar")
+    //runtimeClasspath fileTree(dir: "$projectDir", include: "btw_ce-2.0.4-dev.zip")
 
     mappings fileTree(dir: "custom_mappings", include: "**.zip")
     modImplementation("io.github.minecraft-cursed-legacy:cursed-fabric-loader:${loader_version}") {
@@ -70,6 +85,7 @@ dependencies {
 configurations {
     btwCompileClasspath.extendsFrom implementation, modImplementation
 }
+
 
 configurations.all {
     resolutionStrategy {
@@ -95,6 +111,11 @@ tasks.withType(JavaCompile).configureEach {
 
 java {
     withSourcesJar()
+}
+
+loom {
+    refmapName = "foodspoilmod.refmap2.json"
+
 }
 
 compileJava {
@@ -124,6 +145,7 @@ task devPackRun(type:Jar) {
 jar {
     from sourceSets.main.output.resourcesDir
     from sourceSets.main.output.classesDirs
+    from fileTree("$projectDir/extras/")
     from("LICENSE") {
         rename { "${it}_${project.archivesBaseName}"}
     }
@@ -163,6 +185,10 @@ task safeRunServer(type:RunServerTask) {
 
 runClient {
     dependsOn('devPackRun')
+}
+
+project.afterEvaluate {
+    devPackRun.dependsOn -= downloadAssets
 }
 
 runServer {
