@@ -16,6 +16,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.tree.*;
 import org.objectweb.asm.util.Textifier;
 
+import java.util.Arrays;
 import java.util.HashMap;
 
 public class MethodInstructionDifference extends AbstractDifference {
@@ -36,7 +37,12 @@ public class MethodInstructionDifference extends AbstractDifference {
     @Override
     public void apply(HashMap<String, ClassNode> classes) throws VerificationException {
         try {
-            MethodNode methodNode = verifyNotNull(verifyNotNull(classes.get(className), "Class wasn't found").methods, "Field wasn't found")
+            /*if (classes.keySet().isEmpty()) {
+                System.out.println("Classes is empty");
+            } else {
+                System.out.println(Arrays.toString(classes.keySet().toArray()));
+            }*/
+            MethodNode methodNode = verifyNotNull(verifyNotNull(classes.get(className), className + " class wasn't found").methods, "Field wasn't found")
                     .stream()
                     .filter(m -> m.name.equals(methodName) && m.desc.equals(methodDesc))
                     .findFirst()
@@ -51,9 +57,10 @@ public class MethodInstructionDifference extends AbstractDifference {
             methodNode.tryCatchBlocks = this.content.tryCatchBlocks;
         } catch (VerificationException e) {
             System.out.println("Method " + methodName + " not found");
-            throw new VerificationException("Method " + methodName + " not found");
+            throw e;
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
+            //throw e;
         }
     }
 

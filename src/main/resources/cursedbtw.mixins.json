@@ -4,6 +4,7 @@
   "package": "btw.community.fabric.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "MinecraftMixin"
   ],
   "client": [
   ],

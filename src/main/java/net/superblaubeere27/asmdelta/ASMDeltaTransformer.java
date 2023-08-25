@@ -62,7 +62,7 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
         if (!patches.containsKey(className)) {
             className = className.replace("/", ".");
             if (!patches.containsKey(className)) {
-                System.out.println("Skipping class: " + className);
+                //System.out.println("Skipping class: " + className);
                 return classfileBuffer;
             }
         }
@@ -70,7 +70,8 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
         ClassNode classNode = new ClassNode();
 
         // The debug information is removed since it isn't needed and causes bugs
-        classReader.accept(classNode, ClassReader.SKIP_DEBUG);
+        //classReader.accept(classNode, ClassReader.SKIP_DEBUG);
+        classReader.accept(classNode, 0);
 
         HashMap<String, ClassNode> map = new HashMap<>();
         // The patch has to be applied to this one class only since they have already been grouped in AgentMain
@@ -81,7 +82,7 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
                 //System.out.println(abstractDifference);
                 abstractDifference.apply(map);
             } catch (Exception e) {
-                System.err.println("Failed to apply patch: " + e.getLocalizedMessage());
+                //System.err.println("Failed to apply patch: " + e.getLocalizedMessage());
                 if (!(abstractDifference instanceof AddClassDifference)) {
                     throw new IllegalStateException("Failed to apply patch", e);
                 }

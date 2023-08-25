@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "modid",
+  "id": "cursedbtw",
   "version": "${version}",
 
   "name": "BTW Fabric Mod",
@@ -26,7 +26,7 @@
     ]
   },
   "mixins": [
-    "modid.mixins.json"
+    "cursedbtw.mixins.json"
   ],
 
   "depends": {

@@ -31,9 +31,12 @@ repositories {
         name 'HalfOf2'
         url 'https://storage.googleapis.com/devan-maven/'
     }
-    maven {
-        url = 'https://raw.githubusercontent.com/Devan-Kerman/Devan-Repo/master/'
+    mavenLocal {
+        url = 'mvn'
     }
+    /*maven {
+        url = 'https://raw.githubusercontent.com/Devan-Kerman/Devan-Repo/master/'
+    }*/
 
 }
 
@@ -61,6 +64,9 @@ dependencies {
     implementation "org.lwjgl.lwjgl:lwjgl-platform:${lwjglVersion}"
 
 
+    //implementation fileTree(dir: "libs", include: "grossfabrichacks-4.5.jar")
+    //modImplementation fileTree(dir: "libs", include: "grossfabrichacks-4.5.jar")
+    //include fileTree(dir: "libs", include: "grossfabrichacks-4.5.jar")
     implementation 'it.unimi.dsi:fastutil:8.5.12'
     modImplementation(group: 'net.devtech', name: 'grossfabrichacks', version: '4.5') {
         exclude group: 'net.fabricmc'
