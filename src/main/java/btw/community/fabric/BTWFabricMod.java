@@ -1,16 +1,21 @@
 package btw.community.fabric;
 
+import net.devtech.grossfabrichacks.GrossFabricHacks;
 import net.devtech.grossfabrichacks.entrypoints.PrePreLaunch;
 import net.devtech.grossfabrichacks.transformer.TransformerApi;
 import net.devtech.grossfabrichacks.transformer.asm.AsmClassTransformer;
 import net.devtech.grossfabrichacks.unsafe.UnsafeUtil;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.launch.common.FabricLauncherBase;
 import net.minecraft.client.MinecraftApplet;
 import net.superblaubeere27.asmdelta.ASMDeltaPatch;
 import net.superblaubeere27.asmdelta.ASMDeltaTransformer;
 import net.superblaubeere27.asmdelta.difference.AbstractDifference;
 import org.objectweb.asm.tree.*;
+import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import sun.misc.Unsafe;
 
 import java.applet.Applet;
@@ -30,6 +35,8 @@ import static org.objectweb.asm.Opcodes.*;
 
 public class BTWFabricMod implements ModInitializer, PrePreLaunch {
     public static String[] args = null;
+    private static ASMDeltaTransformer transformer;
+
     @Override
     public void onInitialize() {
     }
@@ -77,7 +84,6 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
-
 
         agentmain("", null);
     }
@@ -341,8 +347,14 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
     public static void agentmain(String agentArgs, Instrumentation inst) {
         ASMDeltaPatch patch;
 
-        try (InputStream inputStream = BTWFabricMod.class.getResourceAsStream(FabricLoader.getInstance().isDevelopmentEnvironment() ? "/output.patch" : "/output-rel.patch")) {
-            patch = ASMDeltaPatch.read(inputStream);
+        try {
+            if (FabricLoader.getInstance().isDevelopmentEnvironment())
+                try (InputStream inputStream = BTWFabricMod.class.getResourceAsStream("/output.patch")) {
+                    patch = ASMDeltaPatch.read(inputStream);
+                }
+            else try (InputStream inputStream = FabricLauncherBase.getLauncher().getEnvironmentType() == EnvType.CLIENT ? BTWFabricMod.class.getResourceAsStream("/output-rel.patch") : BTWFabricMod.class.getResourceAsStream("/output-rel-server.patch")) {
+                patch = ASMDeltaPatch.read(inputStream);
+            }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read patch");
         }
@@ -358,7 +370,7 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
         System.out.println("Applying patch " + patch.getPatchName());
 
         try {
-            ASMDeltaTransformer transformer = new ASMDeltaTransformer(patchMap);
+            transformer = new ASMDeltaTransformer(patchMap);
             AsmClassTransformer asmClassTransformer = new AsmClassTransformer() {
                 @Override
                 public void transform(String name, ClassNode node) {
@@ -428,8 +440,24 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
             System.err.println("Failed to initialize agent");
             e.printStackTrace();
         }
+        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) {
+            if (GrossFabricHacks.preApplyList == null) {
+                GrossFabricHacks.preApplyList = new ArrayList<>();
+            }
+            try {
+                GrossFabricHacks.preApplyList.add(BTWFabricMod.class.getMethod("performPreApplyOperation", String.class, ClassNode.class, String.class, IMixinInfo.class));
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
+    public static void performPreApplyOperation(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+        System.out.println("Performing pre Mixin applies: " + targetClassName + " " + mixinClassName);
+        transformer.doTransform2(targetClassName, targetClass);
+    }
+
+    @Environment(EnvType.CLIENT)
     public static void initArgs(MinecraftApplet applet) {
         java.lang.reflect.Field s;
         try {

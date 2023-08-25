@@ -73,13 +73,39 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
         //classReader.accept(classNode, ClassReader.SKIP_DEBUG);
         classReader.accept(classNode, 0);
 
+        return doTransform(className, classNode);
+    }
+
+    public byte[] doTransform(String className, ClassNode classNode) {
+        applyPatches(className, classNode);
+
+        // Recalculate frames and maximums. All classes are available at runtime
+        // so it makes the agent a lot safer from producing illegal classes
+        ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);//ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+
+        // set class version to Java 8
+        classNode.version = 52;
+        classNode.accept(classWriter);
+
+
+        return classWriter.toByteArray();
+    }
+
+    public ClassNode doTransform2(String className, ClassNode classNode) {
+        applyPatches(className, classNode);
+        // set class version to Java 8
+        classNode.version = 52;
+        return classNode;
+    }
+
+    private void applyPatches(String className, ClassNode classNode) {
         HashMap<String, ClassNode> map = new HashMap<>();
         // The patch has to be applied to this one class only since they have already been grouped in AgentMain
         map.put(classNode.name, classNode);
 
         for (AbstractDifference abstractDifference : patches.get(className)) {
             try {
-                //System.out.println(abstractDifference);
+                //System.out.println(abstractDifference.getClassName());
                 abstractDifference.apply(map);
             } catch (Exception e) {
                 //System.err.println("Failed to apply patch: " + e.getLocalizedMessage());
@@ -88,17 +114,6 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
                 }
             }
         }
-
-        // Recalculate frames and maximums. All classes are available at runtime
-        // so it makes the agent a lot safer from producing illegal classes
-        ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);//ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-
-        // set jvm class version to Java 8
-        classNode.version = 52;
-        classNode.accept(classWriter);
-
-
-        return classWriter.toByteArray();
     }
 
     @Override
