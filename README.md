@@ -10,3 +10,4 @@ This project incorporates:
 * A modified version of [asm-delta-agent](https://github.com/superblaubeere27/asm-delta-agent) (MIT)
 * A modified version of [asm-delta](https://github.com/superblaubeere27/asm-delta) (MIT)
 * A modified version of [GrossFabricHacks](https://github.com/Devan-Kerman/GrossFabricHacks) (MPL-2.0)
+* An adaption of [NoVerify](https://github.com/char/noverify-hackery) (GPL)
