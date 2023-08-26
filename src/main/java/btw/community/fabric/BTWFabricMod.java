@@ -34,6 +34,7 @@ import java.util.function.Function;
 import static org.objectweb.asm.Opcodes.*;
 
 public class BTWFabricMod implements ModInitializer, PrePreLaunch {
+    private static boolean DISABLE_BYTECODE_VERIFIER = false;
     public static String[] args = null;
     private static ASMDeltaTransformer transformer;
 
@@ -41,7 +42,7 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
     public void onInitialize() {
     }
 
-    public static String getIntermediary(String cls) {
+    public static String getMappedName(String cls) {
         return FabricLoader.getInstance().getMappingResolver().mapClassName("intermediary", cls);
     }
 
@@ -51,44 +52,46 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
     }
     @Override
     public void onPrePreLaunch() {
-        // This following code will set the verifier to none.
-        // Because the JVM does not like it when you totally modify the bytecode at runtime.
-        try {
-            HashMap<String, JVMStruct> structs = getStructs();
-            //System.out.println("Structs: " + structs);
-            HashMap<String, BTWFabricMod.JVMType> types = getTypes(structs);
-            //System.out.println("Types: " + types);
-            List<BTWFabricMod.JVMFlag> flags = getFlags(types);
-            //System.out.println("Flags: " + flags);
-            Unsafe theUnsafe = (Unsafe) UnsafeUtil.theUnsafe;
-            for (JVMFlag flag : flags) {
-                if (flag.name.equals("BytecodeVerificationLocal")
-                        || flag.name.equals("BytecodeVerificationRemote")) {
-                    System.out.println(theUnsafe.getByte(flag.address));
+        if (DISABLE_BYTECODE_VERIFIER) {
+            // This following code will set the verifier to none.
+            // Because the JVM does not like it when you totally modify the bytecode at runtime.
+            try {
+                HashMap<String, JVMStruct> structs = getStructs();
+                //System.out.println("Structs: " + structs);
+                HashMap<String, BTWFabricMod.JVMType> types = getTypes(structs);
+                //System.out.println("Types: " + types);
+                List<BTWFabricMod.JVMFlag> flags = getFlags(types);
+                //System.out.println("Flags: " + flags);
+                Unsafe theUnsafe = (Unsafe) UnsafeUtil.theUnsafe;
+                for (JVMFlag flag : flags) {
+                    if (flag.name.equals("BytecodeVerificationLocal")
+                            || flag.name.equals("BytecodeVerificationRemote")) {
+                        System.out.println(theUnsafe.getByte(flag.address));
+                    }
                 }
-            }
-            disableBytecodeVerifier();
-            structs = getStructs();
-            //System.out.println("Structs: " + structs);
-            types = getTypes(structs);
-            //System.out.println("Types: " + types);
-            flags = getFlags(types);
-            //System.out.println("Flags: " + flags);
-            for (JVMFlag flag : flags) {
-                if (flag.name.equals("BytecodeVerificationLocal")
-                        || flag.name.equals("BytecodeVerificationRemote")) {
-                    System.out.println(theUnsafe.getByte(flag.address));
+                disableBytecodeVerifier();
+                structs = getStructs();
+                //System.out.println("Structs: " + structs);
+                types = getTypes(structs);
+                //System.out.println("Types: " + types);
+                flags = getFlags(types);
+                //System.out.println("Flags: " + flags);
+                for (JVMFlag flag : flags) {
+                    if (flag.name.equals("BytecodeVerificationLocal")
+                            || flag.name.equals("BytecodeVerificationRemote")) {
+                        System.out.println(theUnsafe.getByte(flag.address));
+                    }
                 }
-            }
 
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            throw new RuntimeException(e);
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         agentmain("", null);
     }
 
-    void disableBytecodeVerifier() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
+    private void disableBytecodeVerifier() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
         Unsafe theUnsafe = (Unsafe) UnsafeUtil.theUnsafe;
         List<JVMFlag> flags = getFlags(getTypes(getStructs()));
 
@@ -96,6 +99,17 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
             if (flag.name.equals("BytecodeVerificationLocal")
                     || flag.name.equals("BytecodeVerificationRemote")) {
                 theUnsafe.putByte(flag.address, (byte) 0);
+            }
+        }
+    }
+
+    private void enableBytecodeVerifier() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
+        Unsafe theUnsafe = (Unsafe) UnsafeUtil.theUnsafe;
+        List<JVMFlag> flags = getFlags(getTypes(getStructs()));
+
+        for (JVMFlag flag : flags) {
+            if (flag.name.equals("BytecodeVerificationRemote")) {
+                theUnsafe.putByte(flag.address, (byte) 1);
             }
         }
     }
@@ -374,13 +388,14 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
             AsmClassTransformer asmClassTransformer = new AsmClassTransformer() {
                 @Override
                 public void transform(String name, ClassNode node) {
-                    String className = getIntermediary("net.minecraft.class_343");
-                    String classNameMC = getIntermediary("net.minecraft.client.main.Main");
+                    String className = getMappedName("net.minecraft.class_343");
+                    String classNameMC = getMappedName("net.minecraft.client.main.Main");
                     if (name.equals(className) || name.equals(className.replace('.', '/'))) {
                         System.out.println("Found Minecraft Canvas class");
                         for (MethodNode method : node.methods) {
                             // Inject main into constructor
-                            if ("<init>".equals(method.name)) {
+                            //System.out.println(method.desc);
+                            if ("<init>".equals(method.name) && method.desc.contains("MinecraftApplet")) {
                                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                                     if (insn.getOpcode() == RETURN) {
                                         InsnList list = new InsnList();
@@ -395,17 +410,19 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
 
                                         // get BTWFabricMod.args, call static main string args
                                         list.add(new FieldInsnNode(GETSTATIC, "btw/community/fabric/BTWFabricMod", "args", "[Ljava/lang/String;"));
-                                        list.add(new MethodInsnNode(INVOKESTATIC, getIntermediary("net.minecraft.class_1600").replace('.', '/'), "main", "([Ljava/lang/String;)V", false));
+                                        list.add(new MethodInsnNode(INVOKESTATIC, getMappedName("net.minecraft.class_1600").replace('.', '/'), "main", "([Ljava/lang/String;)V", false));
 
-                                        // Throw exception
-                                        list.add(new TypeInsnNode(NEW, "java/lang/RuntimeException"));
-                                        list.add(new InsnNode(DUP));
-                                        list.add(new MethodInsnNode(INVOKESPECIAL, "java/lang/InterruptedException", "<init>", "()V", false));
-                                        list.add(new InsnNode(ATHROW));
+                                        // Call System.exit(0)
+                                        list.add(new FieldInsnNode(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;"));
+                                        list.add(new LdcInsnNode("BTW Fabric Mod has finished, exiting"));
+                                        list.add(new MethodInsnNode(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false));
+                                        list.add(new InsnNode(ICONST_0));
+                                        list.add(new MethodInsnNode(INVOKESTATIC, "java/lang/System", "exit", "(I)V", false));
 
                                         method.instructions.insertBefore(insn, list);
                                         break;
                                     }
+
                                 }
                             }
                         }
@@ -454,7 +471,7 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
 
     public static void performPreApplyOperation(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
         System.out.println("Performing pre Mixin applies: " + targetClassName + " " + mixinClassName);
-        transformer.doTransform2(targetClassName, targetClass);
+        transformer.doTransform2(targetClassName, targetClass, false);
     }
 
     @Environment(EnvType.CLIENT)

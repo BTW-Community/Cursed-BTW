@@ -37,6 +37,16 @@ public class AddMethodDifference extends AbstractDifference {
             classNode.methods = methods = new ArrayList<>();
         }
 
+        // Check if the method already exists
+        MethodNode existingMethod = null;
+        for (MethodNode method : methods) {
+            if (method.name.equals(methodNode.name) && method.desc.equals(methodNode.desc)) {
+                existingMethod = method;
+                break;
+            }
+        }
+        // Yeet the old method, who needs it anyway
+        methods.remove(existingMethod);
         methods.add(methodNode);
 
     }
