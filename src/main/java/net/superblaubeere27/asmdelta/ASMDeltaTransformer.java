@@ -55,6 +55,8 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
     private static boolean EXPORT_CLASSES = false;
     private static boolean DEBUG = false;
 
+    private List<String> appliedPatches = new ArrayList<>();
+
     private HashMap<String, HashSet<AbstractDifference>> patches;
 
     public ASMDeltaTransformer(HashMap<String, HashSet<AbstractDifference>> patches) {
@@ -93,8 +95,11 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
     }
 
     public byte[] doTransform(String className, ClassNode classNode) {
+        if (this.appliedPatches.contains(className)) {
+            throw new RuntimeException("Class " + className + " was already transformed!");
+        }
         applyPatches(className, classNode, false);
-
+        this.appliedPatches.add(className);
         // Recalculate frames and maximums. All classes are available at runtime
         // so it makes the agent a lot safer from producing illegal classes
 
@@ -218,7 +223,7 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
     private void conjureClass(String className) {
         ClassWriter classWriter;
         String name = BTWFabricMod.getMappedName(className);
-        println("Making class " + name);
+        println("Conjuring class " + name);
         ClassNode classNode = new ClassNode();
         classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         classNode = this.doTransform2(name, classNode, true);
@@ -252,10 +257,15 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
     }
 
     public ClassNode doTransform2(String className, ClassNode classNode, boolean createNew) {
+        if (this.appliedPatches.contains(className)) {
+            println("Class " + className + " was already transformed!");
+            return classNode;
+        }
         classNode = applyPatches(className, classNode, createNew);
         if (classNode == null) {
             return null;
         }
+        this.appliedPatches.add(className);
         // set class version to Java 8
         classNode.version = 52;
         return classNode;

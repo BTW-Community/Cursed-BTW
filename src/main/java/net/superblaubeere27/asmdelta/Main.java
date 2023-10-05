@@ -83,7 +83,7 @@ public class Main {
 
         long l = System.currentTimeMillis();
 
-        List<AbstractDifference> differences = ASMDelta.calculateDifference(Runtime.getRuntime().availableProcessors(),
+        List<AbstractDifference> differences = ASMDelta.calculateDifference(1,
                 jar1,
                 jar2);
 
