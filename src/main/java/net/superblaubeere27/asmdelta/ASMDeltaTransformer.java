@@ -36,6 +36,7 @@ import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.spongepowered.asm.transformers.MixinClassWriter;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,7 +56,8 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
     private static boolean EXPORT_CLASSES = false;
     private static boolean DEBUG = false;
 
-    private List<String> appliedPatches = new ArrayList<>();
+    // Temporary hackaround
+    private HashMap<String, byte[]> appliedPatches = new HashMap<>();
 
     private HashMap<String, HashSet<AbstractDifference>> patches;
 
@@ -95,16 +97,16 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
     }
 
     public byte[] doTransform(String className, ClassNode classNode) {
-        if (this.appliedPatches.contains(className)) {
-            throw new RuntimeException("Class " + className + " was already transformed!");
+        if (this.appliedPatches.containsKey(className)) {
+            System.err.println("Error: Class " + className + " was already transformed!");
         }
         applyPatches(className, classNode, false);
-        this.appliedPatches.add(className);
+
         // Recalculate frames and maximums. All classes are available at runtime
         // so it makes the agent a lot safer from producing illegal classes
 
         // Scratch that, only maximums
-        ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);//ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        ClassWriter classWriter = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);//ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 
         // set class version to Java 8
         classNode.version = 52;
@@ -133,6 +135,27 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
             }
             m.localVariables.removeAll(toRemove);
         }
+        /*List<FieldNode> toRemove = new ArrayList<>();
+        HashMap<String, FieldNode> seen = new HashMap<>();
+        for (FieldNode f : classNode.fields) {
+            if (f == null) continue;
+            if (seen.containsKey(f.name)) {
+                println("Duplicate field: " + f.name + " in " + className + "." + f.name + f.desc);
+                println("    " + seen.get(f.name).desc + " vs " + f.desc);
+
+                // Attempt to fix it
+                if (seen.get(f.name).desc.equals(f.desc)) {
+                    println("    Fixing...");
+                    // Remove the duplicate
+                    toRemove.add(f);
+                } else {
+                    println("    Failed to fix");
+                }
+            } else {
+                seen.put(f.name, f);
+            }
+        }
+        classNode.fields.removeAll(toRemove);*/
         // Now check for inconsistent constant value types
         // Also seems to work?
         for (FieldNode f : classNode.fields) {
@@ -216,6 +239,8 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
         } else if (className.equals(BTWFabricMod.getMappedName("net.minecraft.class_101"))) {
             conjureClass("net.minecraft.class_1444");
         }
+
+        this.appliedPatches.put(className, b);
         return b;
     }
 
@@ -257,7 +282,8 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
     }
 
     public ClassNode doTransform2(String className, ClassNode classNode, boolean createNew) {
-        if (this.appliedPatches.contains(className)) {
+        println("Doing Transform2 " + className);
+        if (this.appliedPatches.containsKey(className)) {
             println("Class " + className + " was already transformed!");
             return classNode;
         }
@@ -265,9 +291,14 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
         if (classNode == null) {
             return null;
         }
-        this.appliedPatches.add(className);
         // set class version to Java 8
         classNode.version = 52;
+
+        ClassWriter classWriter = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+        classNode.accept(classWriter);
+
+        this.appliedPatches.put(className, classWriter.toByteArray());
+
         return classNode;
     }
 

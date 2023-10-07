@@ -10,12 +10,12 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.launch.common.FabricLauncherBase;
-import net.minecraft.client.MinecraftApplet;
 import net.superblaubeere27.asmdelta.ASMDeltaPatch;
 import net.superblaubeere27.asmdelta.ASMDeltaTransformer;
 import net.superblaubeere27.asmdelta.difference.AbstractDifference;
 import org.objectweb.asm.tree.*;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
+import org.spongepowered.asm.mixin.transformer.ClassInfo;
 import sun.misc.Unsafe;
 
 import java.applet.Applet;
@@ -25,11 +25,9 @@ import java.io.InputStream;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.objectweb.asm.Opcodes.*;
 
@@ -44,6 +42,10 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
 
     public static String getMappedName(String cls) {
         return FabricLoader.getInstance().getMappingResolver().mapClassName("intermediary", cls);
+    }
+
+    public static String getMappedNameField(String cls, String field, String desc) {
+        return FabricLoader.getInstance().getMappingResolver().mapFieldName("intermediary", cls, field, desc);
     }
 
     //@Override
@@ -390,6 +392,8 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
                 public void transform(String name, ClassNode node) {
                     String className = getMappedName("net.minecraft.class_343");
                     String classNameMC = getMappedName("net.minecraft.client.main.Main");
+                    String classNameMinecraft = getMappedName("net.minecraft.class_1600");
+                    String classNameDedicatedServer = getMappedName("net.minecraft.class_770");
                     if (name.equals(className) || name.equals(className.replace('.', '/'))) {
                         System.out.println("Found Minecraft Canvas class");
                         for (MethodNode method : node.methods) {
@@ -406,7 +410,8 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
 
                                         // call BTWFabricMod.initArgs, use the supplied applet
                                         list.add(new VarInsnNode(ALOAD, 1));
-                                        list.add(new MethodInsnNode(INVOKESTATIC, "btw/community/fabric/BTWFabricMod", "initArgs", "(Lnet/minecraft/client/MinecraftApplet;)V", false));
+                                        //list.add(new MethodInsnNode(INVOKESTATIC, "btw/community/fabric/BTWFabricMod", "initArgs", "(Lnet/minecraft/client/MinecraftApplet;)V", false));
+                                        list.add(new MethodInsnNode(INVOKESTATIC, "btw/community/fabric/BTWFabricMod", "initArgs", "(Ljava/lang/Object;)V", false));
 
                                         // get BTWFabricMod.args, call static main string args
                                         list.add(new FieldInsnNode(GETSTATIC, "btw/community/fabric/BTWFabricMod", "args", "[Ljava/lang/String;"));
@@ -428,7 +433,7 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
                         }
                     }
                     if (name.equals(classNameMC) || name.equals(classNameMC.replace('.', '/'))) {
-                        System.out.println("Found Minecraft Main class");
+                        System.out.println("Found Main class");
                         for (MethodNode method : node.methods) {
                             // Inject main into constructor
                             if ("start".equals(method.name)) {
@@ -448,6 +453,47 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
                             }
                         }
                     }
+                    if (name.equals(classNameMinecraft) || name.equals(classNameMinecraft.replace('.', '/'))) {
+                        System.out.println("Found Minecraft class");
+                        for (MethodNode method : node.methods) {
+                            if ("<init>".equals(method.name)) {
+                                // Find first return statement
+                                for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                                    if (insn.getOpcode() == RETURN) {
+                                        InsnList list = new InsnList();
+                                        // get net/minecraft/class_1600.field_3762 Ljava/io/File; (not static)
+                                        list.add(new VarInsnNode(ALOAD, 0));
+                                        list.add(new FieldInsnNode(GETFIELD, classNameMinecraft.replace('.', '/'), getMappedNameField("net.minecraft.class_1600", "field_3762", "Ljava/io/File;"), "Ljava/io/File;"));
+                                        list.add(new VarInsnNode(ALOAD, 0));
+                                        list.add(new MethodInsnNode(184, "net/fabricmc/loader/entrypoint/minecraft/hooks/Entrypoint" + (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT ? "Client" : "Server"), "start", "(Ljava/io/File;Ljava/lang/Object;)V", false));
+                                        method.instructions.insertBefore(insn, list);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (name.equals(classNameDedicatedServer) || name.equals(classNameDedicatedServer.replace('.', '/'))) {
+                        System.out.println("Found Minecraft class");
+                        for (MethodNode method : node.methods) {
+                            // Inject main into constructor
+                            if ("<init>".equals(method.name) && method.desc.equals("(Ljava/io/File;)V")) {
+                                // Find first return statement
+                                for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                                    if (insn.getOpcode() == RETURN) {
+                                        InsnList list = new InsnList();
+
+                                        // get net/minecraft/class_1600.field_3762 Ljava/io/File; (not static)
+                                        list.add(new VarInsnNode(ALOAD, 1));
+                                        list.add(new VarInsnNode(ALOAD, 0));
+                                        list.add(new MethodInsnNode(184, "net/fabricmc/loader/entrypoint/minecraft/hooks/Entrypoint" + (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT ? "Client" : "Server"), "start", "(Ljava/io/File;Ljava/lang/Object;)V", false));
+                                        method.instructions.insertBefore(insn, list);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             };
 
@@ -457,25 +503,42 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
             System.err.println("Failed to initialize agent");
             e.printStackTrace();
         }
-        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) {
-            if (GrossFabricHacks.preApplyList == null) {
-                GrossFabricHacks.preApplyList = new ArrayList<>();
-            }
-            try {
-                GrossFabricHacks.preApplyList.add(BTWFabricMod.class.getMethod("performPreApplyOperation", String.class, ClassNode.class, String.class, IMixinInfo.class));
-            } catch (NoSuchMethodException e) {
-                throw new RuntimeException(e);
-            }
+        if (GrossFabricHacks.preApplyList == null) {
+            GrossFabricHacks.preApplyList = new ArrayList<>();
+        }
+        try {
+            GrossFabricHacks.preApplyList.add(BTWFabricMod.class.getMethod("performPreApplyOperation", String.class, ClassNode.class, String.class, IMixinInfo.class));
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
         }
     }
 
     public static void performPreApplyOperation(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
-        System.out.println("Performing pre Mixin applies: " + targetClassName + " " + mixinClassName);
         transformer.doTransform2(targetClassName, targetClass, false);
+
+        // Use reflection to get MixinInfo.targetClasses
+        ArrayList<ClassInfo> targetClasses;
+        Set<ClassInfo.Method> methods;
+        try {
+            java.lang.reflect.Field f = mixinInfo.getClass().getDeclaredField("targetClasses");
+            f.setAccessible(true);
+            targetClasses = (ArrayList<ClassInfo>) f.get(mixinInfo);
+            f = ClassInfo.class.getDeclaredField("methods");
+            f.setAccessible(true);
+            for (ClassInfo ci : targetClasses) {
+                if (ci.getClassName().equals(targetClassName)) {
+                    methods = (Set<ClassInfo.Method>) f.get(ci);
+                    methods.clear();
+                    methods.addAll(targetClass.methods.stream().map(m -> ci.new Method(m)).collect(Collectors.toSet()));
+                }
+            }
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Environment(EnvType.CLIENT)
-    public static void initArgs(MinecraftApplet applet) {
+    public static void initArgs(Object applet) {
         java.lang.reflect.Field s;
         try {
             s = Applet.class.getDeclaredField("stub");

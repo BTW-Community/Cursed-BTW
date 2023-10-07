@@ -20,6 +20,7 @@ import net.superblaubeere27.asmdelta.utils.Scheduler;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import java.io.File;
@@ -159,6 +160,9 @@ public class ASMDelta {
         if (!Objects.equals(oldMethod.signature, newMethod.signature)) { // FieldNode.signature might be null
             differences.add(new MethodSignatureDifference(className, oldMethod.name, oldMethod.desc, newMethod.signature));
         }
+        if (!isSameLocalVariables(oldMethod.localVariables, newMethod.localVariables)) {
+            differences.add(new MethodLocalVariableDifference(className, oldMethod.name, oldMethod.desc, newMethod.localVariables));
+        }
         if (!(oldMethod.exceptions == null ? Collections.emptyList() : oldMethod.exceptions).equals(newMethod.exceptions == null ? Collections.emptyList() : newMethod.exceptions)) {
             differences.add(new MethodExceptionDifference(className, oldMethod.name, oldMethod.desc, newMethod.exceptions));
         }
@@ -170,6 +174,7 @@ public class ASMDelta {
         }
         if (!InstructionComparator.isSame(oldMethod.instructions, newMethod.instructions, oldMethod.tryCatchBlocks, newMethod.tryCatchBlocks)) {
             differences.add(new MethodInstructionDifference(className, oldMethod.name, oldMethod.desc, newMethod));
+            differences.add(new MethodLocalVariableDifference(className, oldMethod.name, oldMethod.desc, newMethod.localVariables));
         }
     }
 
@@ -187,6 +192,32 @@ public class ASMDelta {
             differences.add(new FieldValueDifference(className, oldField.name, newField.value));
         }
         // TODO Implement annotation stuff
+    }
+
+    private static boolean isSameLocalVariables(List<LocalVariableNode> a, List<LocalVariableNode> b) {
+        if (a == null && b == null) return true;
+        if (a == null && b.isEmpty()) return true;
+        if (b == null && a.isEmpty()) return true;
+        if (a.size() > 0 || b.size() > 0) {
+            System.out.println(a);
+            System.out.println(b);
+            System.out.println("-------");
+        }
+        if (a.size() != b.size()) return false;
+
+        for (int i = 0; i < a.size(); i++) {
+            LocalVariableNode aNode = a.get(i);
+            LocalVariableNode bNode = b.get(i);
+
+            if (!Objects.equals(aNode.name, bNode.name)
+                    || !Objects.equals(aNode.desc, bNode.desc)
+                    || !Objects.equals(aNode.signature, bNode.signature)
+                    || aNode.index != bNode.index) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static HashMap<String, ClassNode> loadJar(int threadCount, List<byte[]> bytes1) {
@@ -207,8 +238,9 @@ public class ASMDelta {
 
                 ClassReader reader = new ClassReader(bytes);
                 ClassNode node = new ClassNode();
-//                reader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-                reader.accept(node, ClassReader.SKIP_DEBUG);
+                //reader.accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+                //reader.accept(node, ClassReader.SKIP_DEBUG);
+                reader.accept(node, ClassReader.EXPAND_FRAMES);
                 map.put(node.name, node);
             }
 

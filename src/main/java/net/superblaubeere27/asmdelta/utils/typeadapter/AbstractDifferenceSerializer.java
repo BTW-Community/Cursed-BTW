@@ -25,6 +25,9 @@ public class AbstractDifferenceSerializer implements JsonSerializer<AbstractDiff
             throws JsonParseException {
         JsonObject jsonObj = jsonElement.getAsJsonObject();
         String className = jsonObj.get(CLASS_META_KEY).getAsString();
+        if (className.equals(MethodLocalVariableDifferenceSerializer.class.getCanonicalName())) {
+            return (new MethodLocalVariableDifferenceSerializer()).deserialize(jsonElement, type, jsonDeserializationContext);
+        }
         try {
             Class<?> clz = Class.forName(className);
             return jsonDeserializationContext.deserialize(jsonElement, clz);

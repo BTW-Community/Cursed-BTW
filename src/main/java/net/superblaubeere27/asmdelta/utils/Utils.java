@@ -13,8 +13,10 @@ package net.superblaubeere27.asmdelta.utils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.superblaubeere27.asmdelta.difference.AbstractDifference;
+import net.superblaubeere27.asmdelta.difference.methods.MethodLocalVariableDifference;
 import net.superblaubeere27.asmdelta.utils.typeadapter.AbstractDifferenceSerializer;
 import net.superblaubeere27.asmdelta.utils.typeadapter.ClassNodeSerializer;
+import net.superblaubeere27.asmdelta.utils.typeadapter.MethodLocalVariableDifferenceSerializer;
 import net.superblaubeere27.asmdelta.utils.typeadapter.MethodNodeSerializer;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.InsnList;
@@ -35,6 +37,7 @@ public class Utils {
                 .registerTypeAdapter(ClassNode.class, new ClassNodeSerializer())
                 .registerTypeAdapter(MethodNode.class, new MethodNodeSerializer())
                 .registerTypeAdapter(AbstractDifference.class, new AbstractDifferenceSerializer())
+                .registerTypeAdapter(MethodLocalVariableDifference.class, new MethodLocalVariableDifferenceSerializer())
                 .create();
     }
 

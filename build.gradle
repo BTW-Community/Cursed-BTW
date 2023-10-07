@@ -10,6 +10,7 @@ buildscript {
 plugins {
     id 'maven-publish'
     id 'fabric-loom' version "0.7-SNAPSHOT"
+    id 'application'
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8
@@ -55,8 +56,8 @@ def lwjglVersion = System.getProperty("os.name").toLowerCase().contains("mac") ?
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    implementation 'org.apache.logging.log4j:log4j-core:2.17.0'
-    implementation 'org.apache.logging.log4j:log4j-api:2.17.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.17.1'
+    implementation 'org.apache.logging.log4j:log4j-api:2.17.1'
     implementation 'org.apache.commons:commons-lang3:3.12.0'
 
     implementation "org.lwjgl.lwjgl:lwjgl_util:${lwjglVersion}"
@@ -149,6 +150,12 @@ jar {
     from("LICENSE") {
         rename { "${it}_${project.archivesBaseName}"}
     }
+    // Set main
+    manifest {
+        attributes(
+                "Main-Class": "net.superblaubeere27.asmdelta.Main",
+        )
+    }
 }
 
 task btwJar(type:Jar) {
@@ -185,6 +192,16 @@ task safeRunServer(type:RunServerTask) {
 
 runClient {
     dependsOn('devPackRun')
+}
+
+// run net.superblaubeere27.amdelta.Main
+application {
+    mainClass = "net.superblaubeere27.asmdelta.Main"
+}
+
+run {
+    applicationDefaultJvmArgs += "-Xss16M"
+    args = ["--jar1", "vanilla-server-release.jar", "--jar2", "btw-server-release.jar", "-o", "./output-release.patch"]
 }
 
 project.afterEvaluate {

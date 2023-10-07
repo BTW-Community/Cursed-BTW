@@ -13,48 +13,43 @@ package net.superblaubeere27.asmdelta.difference.methods;
 import net.superblaubeere27.asmdelta.difference.AbstractDifference;
 import net.superblaubeere27.asmdelta.difference.VerificationException;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 
-public class RemoveMethodDifference extends AbstractDifference {
+public class MethodLocalVariableDifference extends AbstractDifference {
     private String className;
-    private String methodName;
-    private String methodDesc;
+    public String methodName;
+    public String methodDesc;
+    public List<LocalVariableNode> localVariables;
 
-    public RemoveMethodDifference(String className, String methodName, String methodDesc) {
+    public MethodLocalVariableDifference(String className, String methodName, String methodDesc, List<LocalVariableNode> localVariables) {
         this.className = className;
         this.methodName = methodName;
         this.methodDesc = methodDesc;
+        this.localVariables = localVariables;
     }
 
     @Override
     public void apply(HashMap<String, ClassNode> classes) throws VerificationException {
-        ClassNode classNode = classes.get(className);
+        MethodNode methodNode = verifyNotNull(verifyNotNull(classes.get(className), "Class wasn't found").methods, "Method wasn't found")
+                .stream()
+                .filter(m -> m.name.equals(methodName) && m.desc.equals(methodDesc))
+                .findFirst()
+                .orElseThrow(VerificationException::new);
 
-        List<MethodNode> methods = classNode.methods;
+        methodNode.localVariables = localVariables;
+    }
 
-        if (methods == null) { // According to the documentation, methods might be null
-            throw new VerificationException("Class has no methods to remove");
-        }
-
-        List toRemove = methods.stream().filter(method -> method.name.equals(methodName) && method.desc.equals(methodDesc)).collect(Collectors.toList());
-        if (toRemove.isEmpty()) {
-            //throw new VerificationException("Method to remove " + methodName + " not found, " + methodDesc);
-            System.err.println("Method to remove " + methodName + " not found, " + methodDesc);
-        }
-        methods.removeAll(toRemove);
+    @Override
+    public boolean canBeAppliedAtRuntime() {
+        return true;
     }
 
     @Override
     public String getClassName() {
         return className;
-    }
-
-    @Override
-    public boolean canBeAppliedAtRuntime() {
-        return false;
     }
 }

@@ -15,16 +15,13 @@ import net.superblaubeere27.asmdelta.difference.AbstractDifference;
 import net.superblaubeere27.asmdelta.difference.VerificationException;
 import net.superblaubeere27.asmdelta.difference.clazz.AddClassDifference;
 import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.tree.ClassNode;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -133,42 +130,6 @@ public class Main {
         }
 
         System.out.println("Wrote patch to " + outputFile.getAbsolutePath());
-
-        HashMap<String, ClassNode> newClasses = ASMDelta.loadJar(16, ASMDelta.loadClasspathFile(new File("C:\\Users\\armin\\Desktop\\MultiMC\\MultiMC\\instances\\Cursed-Fabric-BTW-MultiMC1\\.minecraft\\start\\vanilla.jar")));
-
-        File outputDir = new File("C:\\Users\\armin\\Desktop\\MultiMC\\MultiMC\\instances\\Cursed-Fabric-BTW-MultiMC1\\.minecraft\\start\\regenOutput");
-
-        //differences.removeAll(differences.stream().filter(e -> !(e instanceof AddClassDifference /*|| e instanceof MethodInstructionDifference && e.getClassName().equals("ave") && ((MethodInstructionDifference) e).getMethodName().equals("av")*/)).collect(Collectors.toSet()));
-
-        for (AbstractDifference difference : differences) {
-            difference.apply(newClasses);
-        }
-
-        Set<String> collect = differences.stream().map(AbstractDifference::getClassName).filter(newClasses::containsKey).collect(Collectors.toSet());
-
-        // print out the classes that are being regenerated
-        collect.forEach(System.out::println);
-        differences.forEach(System.out::println);
-
-        for (String className : collect) {
-            ClassNode classNode = newClasses.get(className);
-            File outputFile1 = new File(outputDir, classNode.name + ".class");
-
-            outputFile1.getParentFile().mkdirs();
-
-            try (FileOutputStream outputStream = new FileOutputStream(outputFile1)) {
-                ClassWriter classWriter = new ClassWriter(0);
-
-                classNode.accept(classWriter);
-
-                outputStream.write(classWriter.toByteArray());
-            }
-
-            System.out.println("Writing " + className);
-
-
-        }
-
 
     }
 
