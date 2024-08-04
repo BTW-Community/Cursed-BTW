@@ -8,8 +8,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(MinecraftServer.class)
 public class MinecraftServerMixin {
-    @Inject(method = "<clinit>", at = @At("HEAD"))
-    private static void onServerStart(CallbackInfo ci) {
+    @Inject(method = "<init>", at = @At("RETURN"))
+    private void onServerStart(CallbackInfo ci) {
         System.out.println("Hello BTW server!");
         //throw new RuntimeException("BTW server is not supported yet!");
     }

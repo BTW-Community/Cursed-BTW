@@ -47,10 +47,8 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.ProtectionDomain;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
+import java.util.regex.PatternSyntaxException;
 
 public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransformer {
     private static boolean EXPORT_CLASSES = false;
@@ -70,6 +68,10 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
         patches.put("net.minecraft.src.SpawnerAnimals$2", new HashSet<AbstractDifference>() {{
             add(new ClassMakePublicDifference("net/minecraft/src/SpawnerAnimals$2"));
         }});
+
+        patches.put("(?=(emi\\.|btw\\.|net\\.minecraft\\.))([\\w\\.]+\\$)([\\w\\.]+\\$?)*", new HashSet<AbstractDifference>() {{
+            add(new ClassMakePublicDifference("", true));
+        }});
     }
 
     @Override
@@ -79,37 +81,51 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
         if (className.contains(".")) {
             className = className.replace(".", "/");
         }
-        if (!patches.containsKey(className)) {
+        if (noMatchingPatches(className)) {
             className = className.replace("/", ".");
-            if (!patches.containsKey(className)) {
+            if (noMatchingPatches(className)) {
                 //println("Skipping class: " + className);
                 return classfileBuffer;
             }
         }
-        ClassReader classReader = new ClassReader(classfileBuffer);
-        ClassNode classNode = new ClassNode();
 
-        // The debug information is removed since it isn't needed and causes bugs (??)
-        //classReader.accept(classNode, ClassReader.SKIP_DEBUG);
-        classReader.accept(classNode, 0);
+        ClassNode classNode = null;
+        if (classfileBuffer != null) {
+            ClassReader classReader = new ClassReader(classfileBuffer);
+            classNode = new ClassNode();
+
+            // The debug information is removed since it isn't needed and causes bugs (??)
+            //classReader.accept(classNode, ClassReader.SKIP_DEBUG);
+            classReader.accept(classNode, 0);
+        }
 
         return doTransform(className, classNode);
     }
 
+    private boolean noMatchingPatches(String className) {
+        return !patches.containsKey(className) && patches.entrySet().parallelStream().noneMatch(x -> {
+            try {
+                return x.getValue().stream().anyMatch(y -> y.isRegex) && className.matches(x.getKey());
+            } catch (PatternSyntaxException e) {
+                return false;
+            }
+        });
+    }
+
     public byte[] doTransform(String className, ClassNode classNode) {
         if (this.appliedPatches.containsKey(className)) {
-            System.err.println("Error: Class " + className + " was already transformed!");
+            println("Error: Class " + className + " was already transformed!");
+            conjureNeededClasses(className);
+            return this.appliedPatches.get(className);
         }
-        applyPatches(className, classNode, false);
+        classNode = applyPatches(className, classNode, classNode == null);
 
         // Recalculate frames and maximums. All classes are available at runtime
         // so it makes the agent a lot safer from producing illegal classes
+        ClassWriter classWriter = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 
-        // Scratch that, only maximums
-        ClassWriter classWriter = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);//ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-
-        // set class version to Java 8
-        classNode.version = 52;
+        // set class version to Java 17
+        classNode.version = 61;
 
         // This seems to work?
         for (MethodNode m : classNode.methods) {
@@ -233,19 +249,27 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
                 e.printStackTrace();
             }
         }
-        // Let me pull out my wand and conjure some classes
-        if (className.equals(BTWFabricMod.getMappedName("net.minecraft.server.MinecraftServer"))) {
-            conjureClass("net.minecraft.class_738");
-        } else if (className.equals(BTWFabricMod.getMappedName("net.minecraft.class_101"))) {
-            conjureClass("net.minecraft.class_1444");
-        }
+        conjureNeededClasses(className);
 
         this.appliedPatches.put(className, b);
         return b;
     }
 
+    private void conjureNeededClasses(String className) {
+        // Let me get my wand and conjure some classes
+        // And yes, the dot notation is correct here
+        if (className.equals(BTWFabricMod.getMappedName("net.minecraft.server.MinecraftServer"))) {
+            conjureClass("net.minecraft.class_738");
+        } else if (className.equals(BTWFabricMod.getMappedName("net.minecraft.class_101"))) {
+            conjureClass("net.minecraft.class_1444");
+        }
+    }
+
+    private List<String> conjuredClasses = new ArrayList<>();
+
     // This *can* fuck up the loading order
     private void conjureClass(String className) {
+        if (conjuredClasses.contains(className)) return;
         ClassWriter classWriter;
         String name = BTWFabricMod.getMappedName(className);
         println("Conjuring class " + name);
@@ -279,26 +303,39 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
         } catch (Exception e) {
             println(e.getMessage());
         }
+        conjuredClasses.add(className);
     }
 
     public ClassNode doTransform2(String className, ClassNode classNode, boolean createNew) {
         println("Doing Transform2 " + className);
         if (this.appliedPatches.containsKey(className)) {
             println("Class " + className + " was already transformed!");
+            conjureNeededClasses(className);
             return classNode;
         }
         classNode = applyPatches(className, classNode, createNew);
         if (classNode == null) {
             return null;
         }
-        // set class version to Java 8
-        classNode.version = 52;
+        // set class version to Java 17
+        classNode.version = 61;
 
         ClassWriter classWriter = new MixinClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
         classNode.accept(classWriter);
 
-        this.appliedPatches.put(className, classWriter.toByteArray());
+        byte[] b = classWriter.toByteArray();
+        this.appliedPatches.put(className, b);
+        if (EXPORT_CLASSES) {
+            try {
+                Path exportPath = new File("./exported_classes/").toPath().resolve(className + ".class");
+                Files.createDirectories(exportPath.getParent());
+                Files.write(exportPath, b);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
+        conjureNeededClasses(className);
         return classNode;
     }
 
@@ -307,11 +344,47 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
 
         HashMap<String, ClassNode> map = new HashMap<>();
         // The patch has to be applied to this one class only since they have already been grouped in AgentMain
-        map.put(classNode.name, classNode);
+        map.put(classNode != null ? classNode.name : className, classNode);
+
+        // First apply regex patches
+        for (Map.Entry<String, HashSet<AbstractDifference>> abstractDifferenceEntry : patches.entrySet().parallelStream().filter(x -> {
+            try {
+                return className.matches(x.getKey());
+            } catch (PatternSyntaxException e) {
+                return false;
+            }
+        }).toList()) {
+            for (AbstractDifference abstractDifference : abstractDifferenceEntry.getValue()) {
+                if (!abstractDifference.isRegex) {
+                    continue;
+                }
+                try {
+                    println("Applying regex patch: " + abstractDifference.getClassName());
+                    //println(abstractDifference.getClassName());
+                    if (createNew && abstractDifference instanceof AddClassDifference) {
+                        //println("Creating new class");
+                        abstractDifference.apply(map);
+                    } else if (!createNew && !(abstractDifference instanceof AddClassDifference)) {
+                        //println("Applying patch");
+                        abstractDifference.apply(map);
+                    }
+                } catch (Exception e) {
+                    //System.err.println("Failed to apply patch: " + e.getLocalizedMessage());
+                    if (!(abstractDifference instanceof AddClassDifference)) {
+                        throw new IllegalStateException("Failed to apply patch", e);
+                    } else if (createNew && abstractDifference instanceof AddClassDifference) {
+                        throw new IllegalStateException("Failed to add class", e);
+                    }
+                }
+            }
+        }
 
         for (AbstractDifference abstractDifference : patches.getOrDefault(className, new HashSet<>())) {
+            if (abstractDifference.isRegex) {
+                continue;
+            }
             try {
-                //println(abstractDifference.getClassName());
+                //println("Applying non-regex patch: " + abstractDifference.getClassName());
                 if (createNew && abstractDifference instanceof AddClassDifference) {
                     //println("Creating new class");
                     abstractDifference.apply(map);
@@ -328,6 +401,7 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
                 }
             }
         }
+
         if (createNew) {
             return map.get(className.replace(".", "/"));
         } else {
@@ -335,9 +409,16 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
         }
     }
 
+    private List<String> inProgress = new ArrayList<>();
     @Override
     public byte[] transform(String name, byte[] data) {
-        return this.transform(null, name, null, null, data);
+        if (inProgress.contains(name)) {
+            return data;
+        }
+        inProgress.add(name);
+        data = this.transform(null, name, null, null, data);
+        inProgress.remove(name);
+        return data;
     }
 
     private static void println(String s) {

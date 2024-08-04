@@ -17,8 +17,7 @@ import org.objectweb.asm.tree.MethodNode;
 
 import java.util.HashMap;
 
-import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
-import static org.objectweb.asm.Opcodes.ACC_SUPER;
+import static org.objectweb.asm.Opcodes.*;
 
 
 public class ClassMakePublicDifference extends AbstractDifference {
@@ -27,23 +26,40 @@ public class ClassMakePublicDifference extends AbstractDifference {
         this.className = className;
     }
 
+    public ClassMakePublicDifference(String className, boolean isRegex) {
+        this.className = className;
+        this.isRegex = isRegex;
+    }
+
     public static ClassMakePublicDifference createNew(String className) {
         return new ClassMakePublicDifference(className);
     }
 
-
     @Override
     public void apply(HashMap<String, ClassNode> classes) {
-        System.out.println("Making " + className + " public");
-        ClassNode node = classes.get(className);
-        node.access |= ACC_PUBLIC | ACC_SUPER;
-        for (MethodNode method : node.methods) {
-            method.access = method.access | ACC_PUBLIC;
-        }
-        for (FieldNode field : node.fields) {
-            field.access = field.access | ACC_PUBLIC;
+        if (isRegex) {
+            for (String s : classes.keySet()) {
+                if (s.matches(className)) {
+                    makePublic(classes, s);
+                }
+            }
+        } else {
+            makePublic(classes, className);
         }
     }
+
+    private void makePublic(HashMap<String, ClassNode> classes, String className) {
+        System.out.println("Making " + className + " public");
+        ClassNode node = classes.get(className);
+        node.access = (node.access & ~(ACC_PRIVATE | ACC_PROTECTED)) | (ACC_PUBLIC | ACC_SUPER);
+        for (MethodNode method : node.methods) {
+            method.access = (method.access & ~(ACC_PRIVATE | ACC_PROTECTED)) | ACC_PUBLIC;
+        }
+        for (FieldNode field : node.fields) {
+            field.access = (field.access & ~(ACC_PRIVATE | ACC_PROTECTED)) | ACC_PUBLIC;
+        }
+    }
+
 
     @Override
     public String getClassName() {

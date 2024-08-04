@@ -16,6 +16,7 @@ import org.objectweb.asm.tree.ClassNode;
 import java.util.HashMap;
 
 public abstract class AbstractDifference {
+    public boolean isRegex = false;
     public abstract void apply(HashMap<String, ClassNode> classes) throws VerificationException;
 
     public abstract boolean canBeAppliedAtRuntime();

@@ -2,16 +2,16 @@
   "required": true,
   "minVersion": "0.8",
   "package": "btw.community.fabric.mixin",
-  "compatibilityLevel": "JAVA_8",
+  "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "MinecraftMixin",
     "MinecraftServerMixin"
   ],
   "client": [
+    "MinecraftMixin",
     "NetClientHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
   },
-  "plugin": "net.devtech.grossfabrichacks.GrossFabricHacks"
+  "plugin": "net.devtech.grossfabrichacks.mixin.GrossFabricHacksPlugin"
 }

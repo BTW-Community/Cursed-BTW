@@ -1,20 +1,9 @@
-import net.fabricmc.loom.task.RunClientTask
-import net.fabricmc.loom.task.RunServerTask
-
-buildscript {
-    dependencies {
-        classpath fileTree(dir: "libs", include: "fabric-loom-0.7.local.jar")
-    }
-}
-
 plugins {
     id 'maven-publish'
-    id 'fabric-loom' version "0.7-SNAPSHOT"
+    id 'fabric-loom' version "1.5-SNAPSHOT"
     id 'application'
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
-
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
 
 archivesBaseName = project.archives_base_name
 version = project.mod_version
@@ -38,8 +27,14 @@ repositories {
     /*maven {
         url = 'https://raw.githubusercontent.com/Devan-Kerman/Devan-Repo/master/'
     }*/
-
 }
+
+loom {
+    setIntermediaryUrl('https://maven.legacyfabric.net/net/legacyfabric/intermediary/%1$s/intermediary-%1$s-v2.jar')
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
 
 sourceSets {
     btw {
@@ -55,49 +50,68 @@ sourceSets {
 def lwjglVersion = System.getProperty("os.name").toLowerCase().contains("mac") ? "2.9.1" : "2.9.0"
 
 dependencies {
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    minecraft("com.mojang:minecraft:${project.minecraft_version}") {
+        exclude group: 'com.google'
+    }
+    mappings "btw.community:mappings:1.0.3"
+
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation 'net.fabricmc:fabric-loom:1.5-SNAPSHOT'
+
     implementation 'org.apache.logging.log4j:log4j-core:2.17.1'
     implementation 'org.apache.logging.log4j:log4j-api:2.17.1'
     implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation 'commons-io:commons-io:2.4'
 
     implementation "org.lwjgl.lwjgl:lwjgl_util:${lwjglVersion}"
     implementation "org.lwjgl.lwjgl:lwjgl:${lwjglVersion}"
     implementation "org.lwjgl.lwjgl:lwjgl-platform:${lwjglVersion}"
 
+    implementation 'com.google.guava:guava:14.0.1'
 
-    //implementation fileTree(dir: "libs", include: "grossfabrichacks-4.5.jar")
-    //modImplementation fileTree(dir: "libs", include: "grossfabrichacks-4.5.jar")
-    //include fileTree(dir: "libs", include: "grossfabrichacks-4.5.jar")
-    implementation 'it.unimi.dsi:fastutil:8.5.12'
-    modImplementation(group: 'net.devtech', name: 'grossfabrichacks', version: '4.5') {
+    // This is what MC 1.6 uses
+    shadow(include(implementation('com.google.code.gson:gson:2.8.9')))
+
+    implementation("net.sourceforge.argo:argo:3.12")
+
+    implementation fileTree(dir: "libs", include: "**.jar")
+    modImplementation(group: 'net.devtech', name: 'grossfabrichacks', version: '6.1-btw') {
         exclude group: 'net.fabricmc'
     }
 
-    include 'it.unimi.dsi:fastutil:8.5.12'
-    include 'net.devtech:grossfabrichacks:4.5'
+    implementation('it.unimi.dsi:fastutil:8.5.12')
+    include 'net.devtech:grossfabrichacks:6.1-btw'
+    include 'org.apache.logging.log4j:log4j-core:2.19.0'
+    include 'org.apache.logging.log4j:log4j-api:2.19.0'
+
+    implementation("net.auoeke:reflect:6.+")
+    implementation("net.auoeke:unsafe:latest.release")
 
     implementation fileTree(dir: "libs", include: "**.zip")
     compileOnly fileTree(dir: "$projectDir/BTW_dev", include: "*.zip")
     compileOnly fileTree(dir: "$buildDir/BTW_dev", include: "**.jar")
 
-    runtimeClasspath fileTree(dir: "$buildDir/dev_run", include: "dev.jar")
-
-    mappings fileTree(dir: "custom_mappings", include: "**.zip")
-    modImplementation("io.github.minecraft-cursed-legacy:cursed-fabric-loader:${loader_version}") {
-        transitive false
-    }
+    runtimeOnly fileTree(dir: "$buildDir/dev_run", include: "dev.jar")
 }
 
 configurations {
     btwCompileClasspath.extendsFrom implementation, modImplementation
 }
 
+shadowJar {
+    from jar
+    configurations = [project.configurations.shadow]
+}
 
 configurations.all {
     resolutionStrategy {
         dependencySubstitution {
-            substitute module('org.lwjgl.lwjgl:lwjgl_util:2.9.1-nightly-20130708-debug3') with module("org.lwjgl.lwjgl:lwjgl_util:${lwjglVersion}")
-            substitute module('org.lwjgl.lwjgl:lwjgl:2.9.1-nightly-20130708-debug3') with module("org.lwjgl.lwjgl:lwjgl:${lwjglVersion}")
+            substitute module('org.lwjgl.lwjgl:lwjgl_util:2.9.1-nightly-20130708-debug3') with {
+                module("org.lwjgl.lwjgl:lwjgl_util:${lwjglVersion}")
+            }
+            substitute module('org.lwjgl.lwjgl:lwjgl:2.9.1-nightly-20130708-debug3') with {
+                module("org.lwjgl.lwjgl:lwjgl:${lwjglVersion}")
+            }
         }
         force "org.lwjgl.lwjgl:lwjgl-platform:${lwjglVersion}"
     }
@@ -108,11 +122,6 @@ processResources {
     filesMatching("fabric.mod.json") {
         expand "version": project.version
     }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    it.options.encoding = "UTF-8"
-    if (JavaVersion.current().isJava9Compatible()) it.options.release = 8
 }
 
 java {
@@ -167,27 +176,9 @@ task btwJar(type:Jar) {
 }
 
 remapJar {
-    dependsOn(jar)
-    input.set jar.archiveFile.get()
+    dependsOn shadowJar
+    input.set shadowJar.archiveFile.get()
     destinationDirectory = file("$rootDir/release")
-}
-
-reobfuscateJar {
-    dependsOn(jar)
-    input.set jar.archiveFile.get()
-    destinationDirectory = file("$rootDir/reobfuscated")
-}
-
-task safeRunClient(type:RunClientTask) {
-    mustRunAfter('clean')
-    dependsOn('clean')
-    dependsOn('devPackRun')
-}
-
-task safeRunServer(type:RunServerTask) {
-    mustRunAfter('clean')
-    dependsOn('clean')
-    dependsOn('devPackRun')
 }
 
 runClient {
@@ -201,7 +192,8 @@ application {
 
 run {
     applicationDefaultJvmArgs += "-Xss16M"
-    args = ["--jar1", "vanilla-server-release.jar", "--jar2", "btw-server-release.jar", "-o", "./output-release.patch"]
+    args = ["--jar1", "vanilla-server-release.jar", "--jar2", "btw-server-release.jar", "-o", "./output-server-release.patch"]
+    //args = ["--jar1", "vanilla-client-release.jar", "--jar2", "btw-client-release.jar", "-o", "./output-client-release.patch"]
 }
 
 project.afterEvaluate {

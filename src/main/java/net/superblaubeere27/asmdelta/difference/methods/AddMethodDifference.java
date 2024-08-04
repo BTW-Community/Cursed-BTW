@@ -10,6 +10,8 @@
 
 package net.superblaubeere27.asmdelta.difference.methods;
 
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.impl.launch.knot.Knot;
 import net.superblaubeere27.asmdelta.difference.AbstractDifference;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
@@ -47,6 +49,17 @@ public class AddMethodDifference extends AbstractDifference {
         }
         // Yeet the old method, who needs it anyway
         methods.remove(existingMethod);
+
+        if (methodNode.invisibleAnnotations != null && !methodNode.invisibleAnnotations.isEmpty()) {
+            for (int i = 0; i < methodNode.invisibleAnnotations.size(); i++) {
+                if (methodNode.invisibleAnnotations.get(i).desc.equals("Lnet/fabricmc/api/Environment;") && ((String[]) methodNode.invisibleAnnotations.get(i).values.get(1))[1].equals("CLIENT")) {
+                    if (Knot.getLauncher().getEnvironmentType() == EnvType.SERVER) {
+                        return;
+                    }
+                }
+            }
+        }
+
         methods.add(methodNode);
 
     }

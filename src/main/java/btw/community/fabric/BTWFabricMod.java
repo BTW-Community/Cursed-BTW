@@ -1,7 +1,7 @@
 package btw.community.fabric;
 
-import net.devtech.grossfabrichacks.GrossFabricHacks;
 import net.devtech.grossfabrichacks.entrypoints.PrePreLaunch;
+import net.devtech.grossfabrichacks.mixin.GrossFabricHacksPlugin;
 import net.devtech.grossfabrichacks.transformer.TransformerApi;
 import net.devtech.grossfabrichacks.transformer.asm.AsmClassTransformer;
 import net.devtech.grossfabrichacks.unsafe.UnsafeUtil;
@@ -9,10 +9,12 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.loader.launch.common.FabricLauncherBase;
+import net.fabricmc.loader.impl.game.minecraft.Hooks;
+import net.fabricmc.loader.impl.launch.knot.Knot;
 import net.superblaubeere27.asmdelta.ASMDeltaPatch;
 import net.superblaubeere27.asmdelta.ASMDeltaTransformer;
 import net.superblaubeere27.asmdelta.difference.AbstractDifference;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.*;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.transformer.ClassInfo;
@@ -35,6 +37,7 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
     private static boolean DISABLE_BYTECODE_VERIFIER = false;
     public static String[] args = null;
     private static ASMDeltaTransformer transformer;
+    private static AsmClassTransformer asmClassTransformer;
 
     @Override
     public void onInitialize() {
@@ -46,6 +49,10 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
 
     public static String getMappedNameField(String cls, String field, String desc) {
         return FabricLoader.getInstance().getMappingResolver().mapFieldName("intermediary", cls, field, desc);
+    }
+
+    public static String getMappedNameMethod(String cls, String method, String desc) {
+        return FabricLoader.getInstance().getMappingResolver().mapMethodName("intermediary", cls, method, desc);
     }
 
     //@Override
@@ -64,11 +71,10 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
                 //System.out.println("Types: " + types);
                 List<BTWFabricMod.JVMFlag> flags = getFlags(types);
                 //System.out.println("Flags: " + flags);
-                Unsafe theUnsafe = (Unsafe) UnsafeUtil.theUnsafe;
                 for (JVMFlag flag : flags) {
                     if (flag.name.equals("BytecodeVerificationLocal")
                             || flag.name.equals("BytecodeVerificationRemote")) {
-                        System.out.println(theUnsafe.getByte(flag.address));
+                        System.out.println(UnsafeUtil.getByte(flag.address));
                     }
                 }
                 disableBytecodeVerifier();
@@ -81,7 +87,7 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
                 for (JVMFlag flag : flags) {
                     if (flag.name.equals("BytecodeVerificationLocal")
                             || flag.name.equals("BytecodeVerificationRemote")) {
-                        System.out.println(theUnsafe.getByte(flag.address));
+                        System.out.println(UnsafeUtil.getByte(flag.address));
                     }
                 }
 
@@ -94,13 +100,12 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
     }
 
     private void disableBytecodeVerifier() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
-        Unsafe theUnsafe = (Unsafe) UnsafeUtil.theUnsafe;
         List<JVMFlag> flags = getFlags(getTypes(getStructs()));
 
         for (JVMFlag flag : flags) {
             if (flag.name.equals("BytecodeVerificationLocal")
                     || flag.name.equals("BytecodeVerificationRemote")) {
-                theUnsafe.putByte(flag.address, (byte) 0);
+                UnsafeUtil.putByte(flag.address, (byte) 0);
             }
         }
     }
@@ -127,7 +132,6 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
     }
 
     HashMap<String, JVMStruct> getStructs() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        Unsafe theUnsafe = (Unsafe) UnsafeUtil.theUnsafe;
         // get findNative reference from ClassLoader.class
         Method findNative = ClassLoader.class.getDeclaredMethod("findNative", ClassLoader.class, String.class);
         Method loadLibrary = ClassLoader.class.getDeclaredMethod("loadLibrary", Class.class, String.class, boolean.class);
@@ -138,21 +142,21 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
         loadLibrary.invoke(null, null, "server/jvm", false);
         //System.out.println("findNative: " + findNative.invoke(null, null, "gHotSpotVMStructs"));
         // get the field offset
-        long fieldOffset = theUnsafe.getLong((long) findNative.invoke(null, null, "gHotSpotVMStructs"));
+        long fieldOffset = UnsafeUtil.getLong((long) findNative.invoke(null, null, "gHotSpotVMStructs"));
         Function<String, Long> symbol = (String name) -> {
             try {
-                return theUnsafe.getLong((Long) findNative.invoke(null, null, name));
+                return UnsafeUtil.getLong((Long) findNative.invoke(null, null, name));
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException(e);
             }
         };
         Function<String, Long> offsetSymbol = name -> symbol.apply("gHotSpotVMStructEntry" + name + "Offset");
         Function<Long, String> derefReadString = addr -> {
-            Long l = theUnsafe.getLong(addr);
+            Long l = UnsafeUtil.getLong(addr);
             StringBuilder sb = new StringBuilder();
             if (l != 0) {
                 while (true) {
-                    char c = (char) theUnsafe.getByte(l);
+                    char c = (char) UnsafeUtil.getByte(l);
                     if (c == 0)
                         break;
                     sb.append(c);
@@ -173,10 +177,10 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
                 break;
             //System.out.println(typeName + " " + fieldName);
             String typeString = derefReadString.apply(currentEntry + offsetSymbol.apply("TypeString"));
-            boolean isStatic = theUnsafe.getInt(currentEntry + offsetSymbol.apply("IsStatic")) != 0;
+            boolean isStatic = UnsafeUtil.getInt(currentEntry + offsetSymbol.apply("IsStatic")) != 0;
 
             Long offsetOffset = isStatic ? offsetSymbol.apply("Address") : offsetSymbol.apply("Offset");
-            Long offset = theUnsafe.getLong(currentEntry + offsetOffset);
+            Long offset = UnsafeUtil.getLong(currentEntry + offsetOffset);
 
             structs.putIfAbsent(typeName, new JVMStruct(typeName));
             JVMStruct struct = structs.get(typeName);
@@ -188,17 +192,16 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
     }
 
     HashMap<String, JVMType> getTypes(HashMap<String, JVMStruct> structs)  {
-        Unsafe theUnsafe = (Unsafe) UnsafeUtil.theUnsafe;
         Function<String, Long> symbol = (String name) -> {
-            return theUnsafe.getLong((Long) findNative(name));
+            return UnsafeUtil.getLong((Long) findNative(name));
         };
         Function<String, Long> offsetSymbol = name -> symbol.apply("gHotSpotVMTypeEntry" + name + "Offset");
         Function<Long, String> derefReadString = addr -> {
-            Long l = theUnsafe.getLong(addr);
+            Long l = UnsafeUtil.getLong(addr);
             StringBuilder sb = new StringBuilder();
             if (l != 0) {
                 while (true) {
-                    char c = (char) theUnsafe.getByte(l);
+                    char c = (char) UnsafeUtil.getByte(l);
                     if (c == 0)
                         break;
                     sb.append(c);
@@ -221,10 +224,10 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
 
             //System.out.println(typeName + " " + superClassName);
 
-            int size = theUnsafe.getInt(entry + offsetSymbol.apply("Size"));
-            boolean oop = theUnsafe.getInt(entry + offsetSymbol.apply("IsOopType")) != 0;
-            boolean int_ = theUnsafe.getInt(entry + offsetSymbol.apply("IsIntegerType")) != 0;
-            boolean unsigned = theUnsafe.getInt(entry + offsetSymbol.apply("IsUnsigned")) != 0;
+            int size = UnsafeUtil.getInt(entry + offsetSymbol.apply("Size"));
+            boolean oop = UnsafeUtil.getInt(entry + offsetSymbol.apply("IsOopType")) != 0;
+            boolean int_ = UnsafeUtil.getInt(entry + offsetSymbol.apply("IsIntegerType")) != 0;
+            boolean unsigned = UnsafeUtil.getInt(entry + offsetSymbol.apply("IsUnsigned")) != 0;
 
             if (structs.get(typeName) != null) {
                 HashMap<String, Field> structFields = structs.get(typeName).fields;
@@ -245,7 +248,6 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
     }
 
     List<JVMFlag> getFlags(HashMap<String, JVMType> types)  {
-        Unsafe theUnsafe = (Unsafe) UnsafeUtil.theUnsafe;
         ArrayList<JVMFlag> jvmFlags = new ArrayList<JVMFlag>();
 
         JVMType flagType = types.get("Flag") != null ? types.get("Flag") : types.get("JVMFlag");
@@ -257,10 +259,10 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
         if (flagsField == null) {
             throw new RuntimeException("Could not resolve field 'Flag.flags'");
         }
-        long flags = theUnsafe.getAddress(flagsField.offset);
+        long flags = UnsafeUtil.getAddress(flagsField.offset);
 
         BTWFabricMod.Field numFlagsField = flagType.fields.get("numFlags");
-        int numFlags = theUnsafe.getInt(numFlagsField.offset);
+        int numFlags = UnsafeUtil.getInt(numFlagsField.offset);
 
         BTWFabricMod.Field nameField = flagType.fields.get("_name");
 
@@ -268,14 +270,14 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
 
         for (long i = 0; i < numFlags; i++) {
             long flagAddress = flags + (i * flagType.size);
-            long flagValueAddress = theUnsafe.getAddress(flagAddress + addrField.offset);
-            long flagNameAddress = theUnsafe.getAddress(flagAddress + nameField.offset);
+            long flagValueAddress = UnsafeUtil.getAddress(flagAddress + addrField.offset);
+            long flagNameAddress = UnsafeUtil.getAddress(flagAddress + nameField.offset);
 
             String flagName;
             StringBuilder sb = new StringBuilder();
             if (flagNameAddress != 0) {
                 while (true) {
-                    char c = (char) theUnsafe.getByte(flagNameAddress);
+                    char c = (char) UnsafeUtil.getByte(flagNameAddress);
                     if (c == 0)
                         break;
                     sb.append(c);
@@ -365,10 +367,10 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
 
         try {
             if (FabricLoader.getInstance().isDevelopmentEnvironment())
-                try (InputStream inputStream = BTWFabricMod.class.getResourceAsStream("/output.patch")) {
+                try (InputStream inputStream = BTWFabricMod.class.getResourceAsStream("/output-client-development.patch")) {
                     patch = ASMDeltaPatch.read(inputStream);
                 }
-            else try (InputStream inputStream = FabricLauncherBase.getLauncher().getEnvironmentType() == EnvType.CLIENT ? BTWFabricMod.class.getResourceAsStream("/output-rel.patch") : BTWFabricMod.class.getResourceAsStream("/output-rel-server.patch")) {
+            else try (InputStream inputStream = Knot.getLauncher().getEnvironmentType() == EnvType.CLIENT ? BTWFabricMod.class.getResourceAsStream("/output-client-release.patch") : BTWFabricMod.class.getResourceAsStream("/output-server-release.patch")) {
                 patch = ASMDeltaPatch.read(inputStream);
             }
         } catch (IOException e) {
@@ -387,51 +389,17 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
 
         try {
             transformer = new ASMDeltaTransformer(patchMap);
-            AsmClassTransformer asmClassTransformer = new AsmClassTransformer() {
+            asmClassTransformer = new AsmClassTransformer() {
                 @Override
                 public void transform(String name, ClassNode node) {
-                    String className = getMappedName("net.minecraft.class_343");
                     String classNameMC = getMappedName("net.minecraft.client.main.Main");
                     String classNameMinecraft = getMappedName("net.minecraft.class_1600");
                     String classNameDedicatedServer = getMappedName("net.minecraft.class_770");
-                    if (name.equals(className) || name.equals(className.replace('.', '/'))) {
-                        System.out.println("Found Minecraft Canvas class");
-                        for (MethodNode method : node.methods) {
-                            // Inject main into constructor
-                            //System.out.println(method.desc);
-                            if ("<init>".equals(method.name) && method.desc.contains("MinecraftApplet")) {
-                                for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
-                                    if (insn.getOpcode() == RETURN) {
-                                        InsnList list = new InsnList();
-                                        // print hello world
-                                        list.add(new FieldInsnNode(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;"));
-                                        list.add(new LdcInsnNode("Hello BTW World!"));
-                                        list.add(new MethodInsnNode(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false));
+                    //String classNameMinecraftServer = getMappedName("net.minecraft.server.MinecraftServer");
 
-                                        // call BTWFabricMod.initArgs, use the supplied applet
-                                        list.add(new VarInsnNode(ALOAD, 1));
-                                        //list.add(new MethodInsnNode(INVOKESTATIC, "btw/community/fabric/BTWFabricMod", "initArgs", "(Lnet/minecraft/client/MinecraftApplet;)V", false));
-                                        list.add(new MethodInsnNode(INVOKESTATIC, "btw/community/fabric/BTWFabricMod", "initArgs", "(Ljava/lang/Object;)V", false));
+                    String startGameName = getMappedNameMethod("net.minecraft.class_1600", "method_2921", "()V");
+                    String gameDirName = getMappedNameField("net.minecraft.class_1600", "field_3762", "Ljava/io/File;");
 
-                                        // get BTWFabricMod.args, call static main string args
-                                        list.add(new FieldInsnNode(GETSTATIC, "btw/community/fabric/BTWFabricMod", "args", "[Ljava/lang/String;"));
-                                        list.add(new MethodInsnNode(INVOKESTATIC, getMappedName("net.minecraft.class_1600").replace('.', '/'), "main", "([Ljava/lang/String;)V", false));
-
-                                        // Call System.exit(0)
-                                        list.add(new FieldInsnNode(GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;"));
-                                        list.add(new LdcInsnNode("BTW Fabric Mod has finished, exiting"));
-                                        list.add(new MethodInsnNode(INVOKEVIRTUAL, "java/io/PrintStream", "println", "(Ljava/lang/String;)V", false));
-                                        list.add(new InsnNode(ICONST_0));
-                                        list.add(new MethodInsnNode(INVOKESTATIC, "java/lang/System", "exit", "(I)V", false));
-
-                                        method.instructions.insertBefore(insn, list);
-                                        break;
-                                    }
-
-                                }
-                            }
-                        }
-                    }
                     if (name.equals(classNameMC) || name.equals(classNameMC.replace('.', '/'))) {
                         System.out.println("Found Main class");
                         for (MethodNode method : node.methods) {
@@ -456,17 +424,18 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
                     if (name.equals(classNameMinecraft) || name.equals(classNameMinecraft.replace('.', '/'))) {
                         System.out.println("Found Minecraft class");
                         for (MethodNode method : node.methods) {
-                            if ("<init>".equals(method.name)) {
+                            if (startGameName.equals(method.name)) {
                                 // Find first return statement
                                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
-                                    if (insn.getOpcode() == RETURN) {
+                                    if (insn.getOpcode() == INVOKESTATIC && ((MethodInsnNode) insn).name.equals("setResizable") && ((MethodInsnNode) insn).desc.equals("(Z)V") && ((MethodInsnNode) insn).owner.equals("org/lwjgl/opengl/Display")) {
                                         InsnList list = new InsnList();
                                         // get net/minecraft/class_1600.field_3762 Ljava/io/File; (not static)
-                                        list.add(new VarInsnNode(ALOAD, 0));
-                                        list.add(new FieldInsnNode(GETFIELD, classNameMinecraft.replace('.', '/'), getMappedNameField("net.minecraft.class_1600", "field_3762", "Ljava/io/File;"), "Ljava/io/File;"));
-                                        list.add(new VarInsnNode(ALOAD, 0));
-                                        list.add(new MethodInsnNode(184, "net/fabricmc/loader/entrypoint/minecraft/hooks/Entrypoint" + (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT ? "Client" : "Server"), "start", "(Ljava/io/File;Ljava/lang/Object;)V", false));
-                                        method.instructions.insertBefore(insn, list);
+                                        list.add(new VarInsnNode(Opcodes.ALOAD, 0));
+                                        list.add(new FieldInsnNode(Opcodes.GETFIELD, classNameMinecraft.replace('.', '/'), gameDirName, "Ljava/io/File;"));
+                                        list.add(new VarInsnNode(Opcodes.ALOAD, 0));
+                                        list.add(new MethodInsnNode(Opcodes.INVOKESTATIC, Hooks.INTERNAL_NAME, "startClient", "(Ljava/io/File;Ljava/lang/Object;)V", false));
+                                        method.instructions.insertBefore(insn.getNext(), list);
+                                        System.out.println("Injected startClient call");
                                         break;
                                     }
                                 }
@@ -474,7 +443,7 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
                         }
                     }
                     if (name.equals(classNameDedicatedServer) || name.equals(classNameDedicatedServer.replace('.', '/'))) {
-                        System.out.println("Found Minecraft class");
+                        System.out.println("Found Dedicated Minecraft Server class");
                         for (MethodNode method : node.methods) {
                             // Inject main into constructor
                             if ("<init>".equals(method.name) && method.desc.equals("(Ljava/io/File;)V")) {
@@ -482,11 +451,10 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
                                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                                     if (insn.getOpcode() == RETURN) {
                                         InsnList list = new InsnList();
-
                                         // get net/minecraft/class_1600.field_3762 Ljava/io/File; (not static)
                                         list.add(new VarInsnNode(ALOAD, 1));
                                         list.add(new VarInsnNode(ALOAD, 0));
-                                        list.add(new MethodInsnNode(184, "net/fabricmc/loader/entrypoint/minecraft/hooks/Entrypoint" + (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT ? "Client" : "Server"), "start", "(Ljava/io/File;Ljava/lang/Object;)V", false));
+                                        list.add(new MethodInsnNode(Opcodes.INVOKESTATIC, Hooks.INTERNAL_NAME, "startServer", "(Ljava/io/File;Ljava/lang/Object;)V", false));
                                         method.instructions.insertBefore(insn, list);
                                         break;
                                     }
@@ -497,17 +465,18 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
                 }
             };
 
-            TransformerApi.registerPreMixinAsmClassTransformer(asmClassTransformer);
+            //TransformerApi.registerPreMixinAsmClassTransformer(asmClassTransformer);
             TransformerApi.registerPreMixinRawClassTransformer(transformer);
+            TransformerApi.registerNullClassTransformer(transformer);
         } catch (Throwable e) {
             System.err.println("Failed to initialize agent");
             e.printStackTrace();
         }
-        if (GrossFabricHacks.preApplyList == null) {
-            GrossFabricHacks.preApplyList = new ArrayList<>();
+        if (GrossFabricHacksPlugin.preApplyList == null) {
+            GrossFabricHacksPlugin.preApplyList = new ArrayList<>();
         }
         try {
-            GrossFabricHacks.preApplyList.add(BTWFabricMod.class.getMethod("performPreApplyOperation", String.class, ClassNode.class, String.class, IMixinInfo.class));
+            GrossFabricHacksPlugin.preApplyList.add(BTWFabricMod.class.getMethod("performPreApplyOperation", String.class, ClassNode.class, String.class, IMixinInfo.class));
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
@@ -519,34 +488,31 @@ public class BTWFabricMod implements ModInitializer, PrePreLaunch {
         // Use reflection to get MixinInfo.targetClasses
         ArrayList<ClassInfo> targetClasses;
         Set<ClassInfo.Method> methods;
+        Set<ClassInfo.Field> fields;
         try {
             java.lang.reflect.Field f = mixinInfo.getClass().getDeclaredField("targetClasses");
             f.setAccessible(true);
             targetClasses = (ArrayList<ClassInfo>) f.get(mixinInfo);
             f = ClassInfo.class.getDeclaredField("methods");
             f.setAccessible(true);
+
+            java.lang.reflect.Field f2 = ClassInfo.class.getDeclaredField("fields");
+            f2.setAccessible(true);
             for (ClassInfo ci : targetClasses) {
                 if (ci.getClassName().equals(targetClassName)) {
                     methods = (Set<ClassInfo.Method>) f.get(ci);
                     methods.clear();
                     methods.addAll(targetClass.methods.stream().map(m -> ci.new Method(m)).collect(Collectors.toSet()));
+
+                    fields = (Set<ClassInfo.Field>) f2.get(ci);
+                    fields.clear();
+                    fields.addAll(targetClass.fields.stream().map(m -> ci.new Field(m)).collect(Collectors.toSet()));
                 }
             }
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
-    }
 
-    @Environment(EnvType.CLIENT)
-    public static void initArgs(Object applet) {
-        java.lang.reflect.Field s;
-        try {
-            s = Applet.class.getDeclaredField("stub");
-            s.setAccessible(true);
-            AppletStub stub = (AppletStub) s.get(applet);
-            args = new String[] {"--username", stub.getParameter("username"), "--session", stub.getParameter("sessionid"), "--gameDir", stub.getParameter("gameDir") == null ? "." : stub.getParameter("gameDir")};
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
+        asmClassTransformer.transform(targetClassName, targetClass);
     }
 }
