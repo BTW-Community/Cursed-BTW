@@ -33,7 +33,7 @@ public class MethodLocalVariableDifferenceSerializer implements JsonSerializer<M
     public JsonElement serialize(MethodLocalVariableDifference methodLocalVariableDifference, java.lang.reflect.Type type, JsonSerializationContext jsonSerializationContext) {
         ClassNode classNode = new ClassNode();
 
-        classNode.version = Opcodes.V1_8;
+        classNode.version = Opcodes.V17;
         classNode.access = Opcodes.ACC_PRIVATE;
         classNode.name = methodLocalVariableDifference.getClassName();
         classNode.signature = null;

@@ -29,7 +29,7 @@ public class MethodNodeSerializer implements JsonSerializer<MethodNode>, JsonDes
     public JsonElement serialize(MethodNode methodNode, java.lang.reflect.Type type, JsonSerializationContext jsonSerializationContext) {
         ClassNode classNode = new ClassNode();
 
-        classNode.version = Opcodes.V1_8;
+        classNode.version = Opcodes.V17;
         classNode.access = Opcodes.ACC_PRIVATE;
         classNode.name = "asdf";
         classNode.signature = null;

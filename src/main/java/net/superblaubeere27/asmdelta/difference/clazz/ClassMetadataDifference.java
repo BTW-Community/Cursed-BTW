@@ -14,6 +14,7 @@ import net.superblaubeere27.asmdelta.difference.AbstractDifference;
 import org.objectweb.asm.tree.ClassNode;
 
 import java.util.HashMap;
+import java.util.List;
 
 //import static jdk.internal.org.objectweb.asm.Opcodes.ACC_SUPER;
 
@@ -28,8 +29,9 @@ public class ClassMetadataDifference extends AbstractDifference {
     private String sourceDebug;
     private String sourceFile;
     private String superName;
+    private List<String> interfaces;
 
-    public ClassMetadataDifference(String className, String outerClass, String nestHostClass, String outerMethod, String outerMethodDesc, String signature, String sourceDebug, String sourceFile, String superName) {
+    public ClassMetadataDifference(String className, String outerClass, String nestHostClass, String outerMethod, String outerMethodDesc, String signature, String sourceDebug, String sourceFile, String superName, List<String> interfaces) {
         this.className = className;
         this.outerClass = outerClass;
         this.nestHostClass = nestHostClass;
@@ -39,9 +41,10 @@ public class ClassMetadataDifference extends AbstractDifference {
         this.sourceDebug = sourceDebug;
         this.sourceFile = sourceFile;
         this.superName = superName;
+        this.interfaces = interfaces;
     }
 
-    public static ClassMetadataDifference createNew(String className, String outerClass, String nestHostClass, String outerMethod, String outerMethodDesc, String signature, String sourceDebug, String sourceFile, String superName) {
+    public static ClassMetadataDifference createNew(String className, String outerClass, String nestHostClass, String outerMethod, String outerMethodDesc, String signature, String sourceDebug, String sourceFile, String superName, List<String> interfaces) {
         if (outerClass == null
                 && nestHostClass == null
                 && outerMethod == null
@@ -49,12 +52,13 @@ public class ClassMetadataDifference extends AbstractDifference {
                 && signature == null
                 && sourceDebug == null
                 && sourceFile == null
-                && superName == null) {
+                && superName == null
+                && interfaces == null) {
             return null;
         }
 
 
-        return new ClassMetadataDifference(className, outerClass, nestHostClass, outerMethod, outerMethodDesc, signature, sourceDebug, sourceFile, superName);
+        return new ClassMetadataDifference(className, outerClass, nestHostClass, outerMethod, outerMethodDesc, signature, sourceDebug, sourceFile, superName, interfaces);
     }
 
 
@@ -78,6 +82,8 @@ public class ClassMetadataDifference extends AbstractDifference {
             node.sourceFile = sourceFile;
         if (superName != null)
             node.superName = superName;
+        if (interfaces != null)
+            node.interfaces = interfaces;
     }
 
     @Override

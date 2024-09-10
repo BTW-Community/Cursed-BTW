@@ -80,7 +80,8 @@ public class ASMDelta {
                 !Objects.equals(oldClass.signature, newClass.signature) ? newClass.signature : null,
                 !Objects.equals(oldClass.sourceDebug, newClass.sourceDebug) ? newClass.sourceDebug : null,
                 !Objects.equals(oldClass.sourceFile, newClass.sourceFile) ? newClass.sourceFile : null,
-                !Objects.equals(oldClass.superName, newClass.superName) ? newClass.superName : null
+                !Objects.equals(oldClass.superName, newClass.superName) ? newClass.superName : null,
+                !oldClass.interfaces.equals(newClass.interfaces) ? newClass.interfaces : null
         );
 
         if (metadataDifference != null) {
