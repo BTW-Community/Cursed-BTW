@@ -75,12 +75,12 @@ dependencies {
     implementation("net.sourceforge.argo:argo:3.12")
 
     implementation fileTree(dir: "libs", include: "**.jar")
-    modImplementation(group: 'net.devtech', name: 'grossfabrichacks', version: '6.1-btw') {
+    modImplementation(group: 'net.devtech', name: 'grossfabrichacks', version: '6.2-btw') {
         exclude group: 'net.fabricmc'
     }
 
     implementation('it.unimi.dsi:fastutil:8.5.12')
-    include 'net.devtech:grossfabrichacks:6.1-btw'
+    include 'net.devtech:grossfabrichacks:6.2-btw'
     include 'org.apache.logging.log4j:log4j-core:2.19.0'
     include 'org.apache.logging.log4j:log4j-api:2.19.0'
 
