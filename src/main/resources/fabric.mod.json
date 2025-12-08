@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "id": "btw",
-  "name": "Better Than Wolves CE",
-  "version": "3.0.0 Beta Snapshot 3",
+  "name": "Better Than Wolves: Community Edition",
+  "version": "3.0.0",
   "environment": "*",
   "description": "This is a continuation of FlowerChild's Better than Wolves total conversion Minecraft mod.",
   "contact": {
@@ -11,7 +11,7 @@
   },
   "authors": [
     "FlowerChild",
-    "Better than Wolves Community"
+    "BTW CE Team"
   ],
   "license": "Creative Commons Attribution 4.0 International",
   "icon": "btw_logo.png",
@@ -34,12 +34,10 @@
   "mixins": [
     "cursedbtw.mixins.json"
   ],
-
   "depends": {
-    "fabricloader": ">=0.7.4"
-  },
-  "suggests": {
-    "flamingo": "*"
+    "fabricloader": ">=0.18.0",
+    "java": ">=17 <=21",
+    "minecraft": "1.6.4"
   },
   "custom": {
     "btw:addon_prefix": "BTW"
