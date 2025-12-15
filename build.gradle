@@ -21,6 +21,9 @@ repositories {
         name 'HalfOf2'
         url 'https://storage.googleapis.com/devan-maven/'
     }
+    maven {
+        url 'https://btw-community.github.io/btw-mvn/'
+    }
     mavenLocal {
         url = 'mvn'
     }
