@@ -182,56 +182,104 @@ public class ASMDeltaTransformer implements ClassFileTransformer, RawClassTransf
                         println("Inconsistent constant value type: " + f.name + " in " + className);
                         println("    " + f.value.getClass().getName() + " vs " + f.desc);
                         println("    Fixing...");
-                        f.value = ((Number) f.value).intValue();
+                        if (f.value instanceof Number) {
+                            f.value = ((Number) f.value).intValue();
+                        } else if (f.value instanceof String valueString) {
+                            f.value = Integer.valueOf(valueString);
+                        } else {
+                            throw new RuntimeException("Unfixable Value! " + f.value + " to " + f.desc);
+                        }
                     }
                 } else if (f.desc.equals("J")) {
                     if (!(f.value instanceof Long)) {
                         println("Inconsistent constant value type: " + f.name + " in " + className);
                         println("    " + f.value.getClass().getName() + " vs " + f.desc);
                         println("    Fixing...");
-                        f.value = ((Number) f.value).longValue();
+                        if (f.value instanceof Number) {
+                            f.value = ((Number) f.value).longValue();
+                        } else if (f.value instanceof String valueString) {
+                            f.value = Long.valueOf(valueString);
+                        } else {
+                            throw new RuntimeException("Unfixable Value! " + f.value + " to " + f.desc);
+                        }
                     }
                 } else if (f.desc.equals("F")) {
                     if (!(f.value instanceof Float)) {
                         println("Inconsistent constant value type: " + f.name + " in " + className);
                         println("    " + f.value.getClass().getName() + " vs " + f.desc);
                         println("    Fixing...");
-                        f.value = ((Number) f.value).floatValue();
+                        if (f.value instanceof Number) {
+                            f.value = ((Number) f.value).floatValue();
+                        } else if (f.value instanceof String valueString) {
+                            f.value = Float.valueOf(valueString);
+                        } else {
+                            throw new RuntimeException("Unfixable Value! " + f.value + " to " + f.desc);
+                        }
                     }
                 } else if (f.desc.equals("D")) {
                     if (!(f.value instanceof Double)) {
                         println("Inconsistent constant value type: " + f.name + " in " + className);
                         println("    " + f.value.getClass().getName() + " vs " + f.desc);
                         println("    Fixing...");
-                        f.value = ((Number) f.value).doubleValue();
+                        if (f.value instanceof Number) {
+                            f.value = ((Number) f.value).doubleValue();
+                        } else if (f.value instanceof String valueString) {
+                            f.value = Double.valueOf(valueString);
+                        } else {
+                            throw new RuntimeException("Unfixable Value! " + f.value + " to " + f.desc);
+                        }
                     }
                 } else if (f.desc.equals("Z")) {
                     if (!(f.value instanceof Boolean)) {
                         println("Inconsistent constant value type: " + f.name + " in " + className);
                         println("    " + f.value.getClass().getName() + " vs " + f.desc);
                         println("    Fixing...");
-                        f.value = ((Number) f.value).intValue() != 0;
+                        if (f.value instanceof Number) {
+                            f.value = ((Number) f.value).intValue() != 0;
+                        } else if (f.value instanceof String valueString) {
+                            f.value = Boolean.valueOf(valueString);
+                        } else {
+                            throw new RuntimeException("Unfixable Value! " + f.value + " to " + f.desc);
+                        }
                     }
                 } else if (f.desc.equals("S")) {
                     if (!(f.value instanceof Short)) {
                         println("Inconsistent constant value type: " + f.name + " in " + className);
                         println("    " + f.value.getClass().getName() + " vs " + f.desc);
                         println("    Fixing...");
-                        f.value = ((Number) f.value).shortValue();
+                        if (f.value instanceof Number) {
+                            f.value = ((Number) f.value).shortValue();
+                        } else if (f.value instanceof String valueString) {
+                            f.value = Short.valueOf(valueString);
+                        } else {
+                            throw new RuntimeException("Unfixable Value! " + f.value + " to " + f.desc);
+                        }
                     }
                 } else if (f.desc.equals("B")) {
                     if (!(f.value instanceof Byte)) {
                         println("Inconsistent constant value type: " + f.name + " in " + className);
                         println("    " + f.value.getClass().getName() + " vs " + f.desc);
                         println("    Fixing...");
-                        f.value = ((Number) f.value).byteValue();
+                        if (f.value instanceof Number) {
+                            f.value = ((Number) f.value).byteValue();
+                        } else if (f.value instanceof String valueString) {
+                            f.value = Byte.valueOf(valueString);
+                        } else {
+                            throw new RuntimeException("Unfixable Value! " + f.value + " to " + f.desc);
+                        }
                     }
                 } else if (f.desc.equals("C")) {
                     if (!(f.value instanceof Character)) {
                         println("Inconsistent constant value type: " + f.name + " in " + className);
                         println("    " + f.value.getClass().getName() + " vs " + f.desc);
                         println("    Fixing...");
-                        f.value = (char) ((Number) f.value).intValue();
+                        if (f.value instanceof Number) {
+                            f.value = (char) ((Number) f.value).intValue();
+                        } else if (f.value instanceof String valueString) {
+                            f.value = (char) Integer.valueOf(valueString).intValue();
+                        } else {
+                            throw new RuntimeException("Unfixable Value! " + f.value + " to " + f.desc);
+                        }
                     }
                 }
             }

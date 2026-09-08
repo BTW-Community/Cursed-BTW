@@ -10,12 +10,14 @@
 
 package net.superblaubeere27.asmdelta;
 
+import com.google.gson.stream.JsonReader;
 import net.superblaubeere27.asmdelta.difference.AbstractDifference;
 import net.superblaubeere27.asmdelta.utils.Utils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
@@ -36,7 +38,9 @@ public class ASMDeltaPatch {
 
     public static ASMDeltaPatch read(InputStream inputStream) throws IOException {
         try (GZIPInputStream gz = new GZIPInputStream(inputStream)) {
-            return Utils.GSON.fromJson(new String(readAllBytes(gz), StandardCharsets.UTF_8), ASMDeltaPatch.class);
+            JsonReader reader = new JsonReader(new StringReader(new String(readAllBytes(gz), StandardCharsets.UTF_8)));
+            reader.setLenient(true);
+            return Utils.GSON.fromJson(reader, ASMDeltaPatch.class);
         }
     }
 

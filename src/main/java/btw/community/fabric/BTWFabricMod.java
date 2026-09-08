@@ -6,7 +6,6 @@ import net.devtech.grossfabrichacks.transformer.TransformerApi;
 import net.devtech.grossfabrichacks.transformer.asm.AsmClassTransformer;
 import net.devtech.grossfabrichacks.unsafe.UnsafeUtil;
 import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.impl.game.minecraft.Hooks;
@@ -20,8 +19,6 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.transformer.ClassInfo;
 import sun.misc.Unsafe;
 
-import java.applet.Applet;
-import java.applet.AppletStub;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.instrument.Instrumentation;

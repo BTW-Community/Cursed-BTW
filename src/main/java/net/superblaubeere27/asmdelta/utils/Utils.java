@@ -38,6 +38,7 @@ public class Utils {
                 .registerTypeAdapter(MethodNode.class, new MethodNodeSerializer())
                 .registerTypeAdapter(AbstractDifference.class, new AbstractDifferenceSerializer())
                 .registerTypeAdapter(MethodLocalVariableDifference.class, new MethodLocalVariableDifferenceSerializer())
+                .serializeSpecialFloatingPointValues()
                 .create();
     }
 
